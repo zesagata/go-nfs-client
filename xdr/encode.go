@@ -25,6 +25,10 @@ func Write(w io.Writer, val interface{}) error {
 		switch t := field.Type(); t.Kind() {
 		case reflect.Uint, reflect.Uint32:
 			binary.Write(w, binary.BigEndian, uint32(field.Uint()))
+
+		case reflect.Uint64:
+			binary.Write(w, binary.BigEndian, field.Uint())
+
 		case reflect.Struct, reflect.Interface:
 			if err := Write(w, field.Interface()); err != nil {
 				return err
@@ -34,7 +38,7 @@ func Write(w io.Writer, val interface{}) error {
 			binary.Write(w, binary.BigEndian, uint32(l))
 			b := []byte(field.String())
 			// pad to 32 bits
-			b = append(b, make([]byte, l % 4)...)
+			b = append(b, make([]byte, l%4)...)
 			w.Write(b)
 		case reflect.Slice:
 			switch t.Elem().Kind() {

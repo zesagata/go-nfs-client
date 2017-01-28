@@ -45,6 +45,10 @@ func main() {
 		log.Fatalf("unable to mount volume: %v", err)
 	}
 
+	if err = v.Mkdir("floob"); err != nil {
+		log.Fatalf("mkdir error: %v", err)
+	}
+
 	if err = v.Unmount(); err != nil {
 		log.Fatalf("unable to umount target: %v", err)
 	}

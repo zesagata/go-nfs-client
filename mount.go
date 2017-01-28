@@ -19,6 +19,7 @@ const (
 	MOUNTPROC3_MNT    = 1
 	MOUNTPROC3_UMNT   = 3
 	MOUNTPROC3_EXPORT = 5
+	MOUNTPROC3_MKDIR  = 9
 
 	MNT3_OK             = 0     // no error
 	MNT3ERR_PERM        = 1     // Not owner
