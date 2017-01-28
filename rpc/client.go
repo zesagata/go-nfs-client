@@ -5,20 +5,24 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"sync/atomic"
 
 	"github.com/davecheney/nfs/xdr"
 )
+
+var xid = uint32(0xcafebabe)
 
 type Client struct {
 	transport
 }
 
-func DialTCP(network, addr string) (*Client, error) {
+func DialTCP(network string, ldr *net.TCPAddr, addr string) (*Client, error) {
 	a, err := net.ResolveTCPAddr(network, addr)
 	if err != nil {
 		return nil, err
 	}
-	conn, err := net.DialTCP(a.Network(), nil, a)
+
+	conn, err := net.DialTCP(a.Network(), ldr, a)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +35,7 @@ func DialTCP(network, addr string) (*Client, error) {
 
 func (c *Client) Call(call interface{}) ([]byte, error) {
 	msg := &message{
-		Xid:     0xcafebabe,
+		Xid:     atomic.AddUint32(&xid, 1),
 		Msgtype: 0,
 		Body:    call,
 	}

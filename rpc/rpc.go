@@ -2,8 +2,9 @@ package rpc
 
 import (
 	"bytes"
-	"github.com/davecheney/nfs/xdr"
 	"io"
+
+	"github.com/davecheney/nfs/xdr"
 )
 
 type transport interface {
@@ -47,6 +48,7 @@ type AUTH_UNIX struct {
 	Machinename string
 	Uid         uint32
 	Gid         uint32
+	GidLen      uint32
 	Gids        uint32
 }
 

@@ -3,6 +3,7 @@ package rpc
 import (
 	"bytes"
 	"fmt"
+
 	"github.com/davecheney/nfs/xdr"
 )
 
@@ -90,7 +91,7 @@ func (p *Portmapper) Dump() ([]Mapping, error) {
 }
 
 func DialPortmapper(net, host string) (*Portmapper, error) {
-	client, err := DialTCP(net, fmt.Sprintf("%s:%d", host, PMAP_PORT))
+	client, err := DialTCP(net, nil, fmt.Sprintf("%s:%d", host, PMAP_PORT))
 	if err != nil {
 		return nil, err
 	}

@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/davecheney/nfs"
 	"github.com/davecheney/nfs/rpc"
-	"log"
 )
 
 func main() {
-	pm, err := rpc.DialPortmapper("tcp", "stora.local")
+	pm, err := rpc.DialPortmapper("tcp", "127.0.0.1")
 	if err != nil {
 		log.Fatalf("unable to contact portmapper: %v", err)
 	}
@@ -25,20 +26,26 @@ func main() {
 	}
 	log.Println("MOUNT", port)
 	defer pm.Close()
-	mount, err := nfs.DialMount("tcp", fmt.Sprintf("stora.local:%d", port))
+	mount, err := nfs.DialMount("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
 		log.Fatal("unable to dial MOUNT service: %v", err)
 	}
 	defer mount.Close()
-	auth := &rpc.AUTH_UNIX {
-		Stamp: 1,
-		Machinename: "localhost",
-		Uid: 0,
-		Gid: 0,
+
+	auth := &rpc.AUTH_UNIX{
+		Stamp:       0x017bbf7f,
+		Machinename: "hasselhoff",
+		Uid:         0,
+		Gid:         0,
+		GidLen:      1,
 	}
-	v, err := mount.Mount("/export",auth.Auth())
+
+	v, err := mount.Mount("/home/fahmed/f", auth.Auth())
 	if err != nil {
 		log.Fatalf("unable to mount volume: %v", err)
 	}
-	v.Unmount()
+
+	if err = v.Unmount(); err != nil {
+		log.Fatalf("unable to umount target: %v", err)
+	}
 }
