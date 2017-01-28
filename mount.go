@@ -5,7 +5,6 @@ package nfs
 
 import (
 	"fmt"
-	"net"
 
 	"github.com/davecheney/nfs/rpc"
 	"github.com/davecheney/nfs/xdr"
@@ -19,7 +18,6 @@ const (
 	MOUNTPROC3_MNT    = 1
 	MOUNTPROC3_UMNT   = 3
 	MOUNTPROC3_EXPORT = 5
-	MOUNTPROC3_MKDIR  = 9
 
 	MNT3_OK             = 0     // no error
 	MNT3ERR_PERM        = 1     // Not owner
@@ -44,21 +42,17 @@ type Group struct {
 
 type Mount struct {
 	*rpc.Client
-}
-
-type Volume struct {
-	*rpc.Client
-	fh      []byte
 	dirPath string
+	Addr    string
 }
 
-func (v *Volume) Unmount() error {
-	type mount struct {
+func (m *Mount) Unmount() error {
+	type umount struct {
 		rpc.Header
-		Dirpath string
+		dirpath string
 	}
 
-	_, err := v.Call(&mount{
+	_, err := m.Call(&umount{
 		rpc.Header{
 			Rpcvers: 2,
 			Prog:    MOUNT_PROG,
@@ -67,7 +61,7 @@ func (v *Volume) Unmount() error {
 			Cred:    rpc.AUTH_NULL,
 			Verf:    rpc.AUTH_NULL,
 		},
-		v.dirPath,
+		m.dirPath,
 	})
 	if err != nil {
 		return err
@@ -102,7 +96,20 @@ func (m *Mount) Mount(dirpath string, auth rpc.Auth) (*Volume, error) {
 	case MNT3_OK:
 		fh, buf := xdr.Opaque(buf)
 		_, buf = xdr.Uint32List(buf)
-		return &Volume{m.Client, fh, dirpath}, nil
+
+		m.dirPath = dirpath
+		vol := &Volume{
+			Client:  nil,
+			auth:    auth,
+			fh:      fh,
+			dirPath: dirpath}
+
+		if err = vol.DialNFS("tcp", m.Addr); err != nil {
+			return nil, err
+		}
+
+		return vol, nil
+
 	case MNT3ERR_PERM:
 		return nil, &Error{"MNT3ERR_PERM"}
 	case MNT3ERR_NOENT:
@@ -142,13 +149,21 @@ func (m *Mount) Exports() ([]Export, error) {
 }
 
 func DialMount(nt, addr string) (*Mount, error) {
-	ldr := &net.TCPAddr{
-		Port: 857,
+	// get MOUNT port
+	m := rpc.Mapping{
+		Prog: MOUNT_PROG,
+		Vers: MOUNT_VERS,
+		Prot: rpc.IPPROTO_TCP,
+		Port: 0,
 	}
 
-	client, err := rpc.DialTCP(nt, ldr, addr)
+	client, err := DialService(nt, addr, m)
 	if err != nil {
 		return nil, err
 	}
-	return &Mount{client}, nil
+
+	return &Mount{
+		Client: client,
+		Addr:   addr,
+	}, nil
 }

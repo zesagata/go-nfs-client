@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/davecheney/nfs"
@@ -9,26 +8,9 @@ import (
 )
 
 func main() {
-	pm, err := rpc.DialPortmapper("tcp", "127.0.0.1")
+	mount, err := nfs.DialMount("tcp", "127.0.0.1")
 	if err != nil {
-		log.Fatalf("unable to contact portmapper: %v", err)
-	}
-	// get MOUNT port
-	m := rpc.Mapping{
-		Prog: nfs.MOUNT_PROG,
-		Vers: nfs.MOUNT_VERS,
-		Prot: rpc.IPPROTO_TCP,
-		Port: 0,
-	}
-	port, err := pm.Getport(m)
-	if err != nil {
-		log.Fatalf("unable to get MOUNT port: %v", err)
-	}
-	log.Println("MOUNT", port)
-	defer pm.Close()
-	mount, err := nfs.DialMount("tcp", fmt.Sprintf("127.0.0.1:%d", port))
-	if err != nil {
-		log.Fatal("unable to dial MOUNT service: %v", err)
+		log.Fatalf("unable to dial MOUNT service: %v", err)
 	}
 	defer mount.Close()
 
@@ -44,12 +26,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("unable to mount volume: %v", err)
 	}
+	defer v.Close()
 
 	if err = v.Mkdir("floob"); err != nil {
 		log.Fatalf("mkdir error: %v", err)
 	}
 
-	if err = v.Unmount(); err != nil {
+	if err = mount.Unmount(); err != nil {
 		log.Fatalf("unable to umount target: %v", err)
 	}
+	mount.Close()
 }
