@@ -1,6 +1,10 @@
 package nfs
 
-import "github.com/davecheney/nfs/rpc"
+import (
+	"os"
+
+	"github.com/davecheney/nfs/rpc"
+)
 
 type Volume struct {
 	*rpc.Client
@@ -15,7 +19,7 @@ type MkdirArgs struct {
 	Attrs Sattr3
 }
 
-func (v *Volume) Mkdir(name string) error {
+func (v *Volume) Mkdir(path string, perm os.FileMode) error {
 	_, err := v.Call(&MkdirArgs{
 		Header: rpc.Header{
 			Rpcvers: 2,
@@ -27,9 +31,14 @@ func (v *Volume) Mkdir(name string) error {
 		},
 		Where: Diropargs3{
 			FH:       v.fh,
-			Filename: name,
+			Filename: path,
 		},
-		Attrs: Sattr3{},
+		Attrs: Sattr3{
+			Mode: SetMode{
+				Set:  uint32(1),
+				Mode: uint32(perm.Perm()),
+			},
+		},
 	})
 
 	return err

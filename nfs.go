@@ -2,8 +2,10 @@ package nfs
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"net"
+	"time"
 
 	"github.com/davecheney/nfs/rpc"
 )
@@ -67,8 +69,11 @@ func DialService(nt, addr string, prog rpc.Mapping) (*rpc.Client, error) {
 		return nil, err
 	}
 
+	s1 := rand.NewSource(time.Now().UnixNano())
+	r1 := rand.New(s1)
+
 	var p int
-	for p = rand.Intn(1024); p < 0; {
+	for p = r1.Intn(1024); p < 0; {
 	}
 
 	ldr := &net.TCPAddr{

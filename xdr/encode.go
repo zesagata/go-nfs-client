@@ -41,8 +41,10 @@ func Write(w io.Writer, val interface{}) error {
 			binary.Write(w, binary.BigEndian, uint32(l))
 			b := []byte(field.String())
 			// pad to 32 bits
-			b = append(b, make([]byte, l%4)...)
-			w.Write(b)
+			if l%4 > 0 {
+				b = append(b, make([]byte, 4-(l%4))...)
+				w.Write(b)
+			}
 
 		case reflect.Slice:
 			switch t.Elem().Kind() {

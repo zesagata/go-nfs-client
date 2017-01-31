@@ -28,7 +28,7 @@ func main() {
 	}
 	defer v.Close()
 
-	if err = v.Mkdir("floob"); err != nil {
+	if err = v.Mkdir("floob", 0644); err != nil {
 		log.Fatalf("mkdir error: %v", err)
 	}
 
