@@ -98,13 +98,9 @@ func (m *Mount) Mount(dirpath string, auth rpc.Auth) (*Volume, error) {
 		_, buf = xdr.Uint32List(buf)
 
 		m.dirPath = dirpath
-		vol := &Volume{
-			Client:  nil,
-			auth:    auth,
-			fh:      fh,
-			dirPath: dirpath}
 
-		if err = vol.DialNFS("tcp", m.Addr); err != nil {
+		vol, err := NewTarget("tcp", m.Addr, auth, fh, dirpath)
+		if err != nil {
 			return nil, err
 		}
 

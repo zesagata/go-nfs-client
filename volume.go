@@ -44,8 +44,7 @@ func (v *Volume) Mkdir(path string, perm os.FileMode) error {
 	return err
 }
 
-func (v *Volume) DialNFS(nt, addr string) error {
-	// get NFS port
+func NewTarget(nt, addr string, auth rpc.Auth, fh []byte, dirpath string) (*Volume, error) {
 	m := rpc.Mapping{
 		Prog: NFS3_PROG,
 		Vers: NFS3_VERS,
@@ -53,11 +52,16 @@ func (v *Volume) DialNFS(nt, addr string) error {
 		Port: 0,
 	}
 
-	var err error
-	v.Client, err = DialService(nt, addr, m)
+	client, err := DialService(nt, addr, m)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	vol := &Volume{
+		Client:  client,
+		auth:    auth,
+		fh:      fh,
+		dirPath: dirpath}
+
+	return vol, nil
 }

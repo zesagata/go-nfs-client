@@ -31,6 +31,7 @@ type Mapping struct {
 
 type Portmapper struct {
 	*Client
+	host string
 }
 
 func (p *Portmapper) Getport(mapping Mapping) (int, error) {
@@ -95,5 +96,5 @@ func DialPortmapper(net, host string) (*Portmapper, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Portmapper{client}, nil
+	return &Portmapper{client, host}, nil
 }

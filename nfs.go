@@ -80,6 +80,8 @@ func DialService(nt, addr string, prog rpc.Mapping) (*rpc.Client, error) {
 		Port: p,
 	}
 
+	log.Printf("using random port %d", p)
+
 	client, err := rpc.DialTCP(nt, ldr, fmt.Sprintf("%s:%d", addr, port))
 	if err != nil {
 		return nil, err

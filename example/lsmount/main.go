@@ -32,8 +32,8 @@ func main() {
 		log.Fatalf("mkdir error: %v", err)
 	}
 
-	if err = mount.Unmount(); err != nil {
-		log.Fatalf("unable to umount target: %v", err)
-	}
+	//	if err = mount.Unmount(); err != nil {
+	//		log.Fatalf("unable to umount target: %v", err)
+	//	}
 	mount.Close()
 }
