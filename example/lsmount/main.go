@@ -17,8 +17,8 @@ func main() {
 	auth := &rpc.AUTH_UNIX{
 		Stamp:       0x017bbf7f,
 		Machinename: "hasselhoff",
-		Uid:         0,
-		Gid:         0,
+		Uid:         1001,
+		Gid:         1001,
 		GidLen:      1,
 	}
 
@@ -28,12 +28,12 @@ func main() {
 	}
 	defer v.Close()
 
-	if err = v.Mkdir("floob", 0644); err != nil {
+	if err = v.Mkdir("floob", 0775); err != nil {
 		log.Fatalf("mkdir error: %v", err)
 	}
 
-	//	if err = mount.Unmount(); err != nil {
-	//		log.Fatalf("unable to umount target: %v", err)
-	//	}
+	if err = mount.Unmount(); err != nil {
+		log.Fatalf("unable to umount target: %v", err)
+	}
 	mount.Close()
 }

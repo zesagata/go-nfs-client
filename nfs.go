@@ -2,12 +2,13 @@ package nfs
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 	"net"
+	"os/user"
 	"time"
 
 	"github.com/davecheney/nfs/rpc"
+	"github.com/davecheney/nfs/util"
 )
 
 // NFS version 3
@@ -62,18 +63,21 @@ func DialService(nt, addr string, prog rpc.Mapping) (*rpc.Client, error) {
 		return nil, err
 	}
 
-	s1 := rand.NewSource(time.Now().UnixNano())
-	r1 := rand.New(s1)
+	var ldr *net.TCPAddr
 
-	var p int
-	for p = r1.Intn(1024); p < 0; {
+	usr, err := user.Current()
+	if err == nil && usr.Uid == "0" {
+		r1 := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+		var p int
+		for p = r1.Intn(1024); p < 0; {
+		}
+
+		util.Debugf("using random port %d", p)
+		ldr = &net.TCPAddr{
+			Port: p,
+		}
 	}
-
-	ldr := &net.TCPAddr{
-		Port: p,
-	}
-
-	log.Printf("using random port %d", p)
 
 	client, err := rpc.DialTCP(nt, ldr, fmt.Sprintf("%s:%d", addr, port))
 	if err != nil {
