@@ -99,7 +99,7 @@ func (m *Mount) Mount(dirpath string, auth rpc.Auth) (*Volume, error) {
 
 		m.dirPath = dirpath
 
-		vol, err := NewTarget("tcp", m.Addr, auth, fh, dirpath)
+		vol, err := NewTarget("tcp", m.Addr, auth, fh, dirpath, 2000, 2000)
 		if err != nil {
 			return nil, err
 		}

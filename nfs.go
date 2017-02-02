@@ -49,13 +49,6 @@ type NFS3Time struct {
 	Nseconds uint32
 }
 
-// Error represents an unexpected I/O behavior.
-type Error struct {
-	ErrorString string
-}
-
-func (err *Error) Error() string { return err.ErrorString }
-
 // Dial an RPC svc after getting the port from the portmapper
 func DialService(nt, addr string, prog rpc.Mapping) (*rpc.Client, error) {
 	pm, err := rpc.DialPortmapper(nt, addr)
