@@ -2,7 +2,7 @@ package nfs
 
 import "github.com/davecheney/nfs/rpc"
 
-type Volume struct {
+type Target struct {
 	*rpc.Client
 
 	auth    rpc.Auth
@@ -10,7 +10,7 @@ type Volume struct {
 	dirPath string
 }
 
-func NewTarget(nt, addr string, auth rpc.Auth, fh []byte, dirpath string) (*Volume, error) {
+func NewTarget(nt, addr string, auth rpc.Auth, fh []byte, dirpath string) (*Target, error) {
 	m := rpc.Mapping{
 		Prog: NFS3_PROG,
 		Vers: NFS3_VERS,
@@ -23,7 +23,7 @@ func NewTarget(nt, addr string, auth rpc.Auth, fh []byte, dirpath string) (*Volu
 		return nil, err
 	}
 
-	vol := &Volume{
+	vol := &Target{
 		Client:  client,
 		auth:    auth,
 		fh:      fh,

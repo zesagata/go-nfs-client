@@ -70,7 +70,7 @@ func (m *Mount) Unmount() error {
 	return nil
 }
 
-func (m *Mount) Mount(dirpath string, auth rpc.Auth) (*Volume, error) {
+func (m *Mount) Mount(dirpath string, auth rpc.Auth) (*Target, error) {
 	type mount struct {
 		rpc.Header
 		Dirpath string

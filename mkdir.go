@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/davecheney/nfs/rpc"
+	"github.com/davecheney/nfs/util"
 	"github.com/davecheney/nfs/xdr"
 )
 
@@ -13,7 +14,7 @@ type MkdirArgs struct {
 	Attrs Sattr3
 }
 
-func (v *Volume) Mkdir(path string, perm os.FileMode) error {
+func (v *Target) Mkdir(path string, perm os.FileMode) error {
 	buf, err := v.Call(&MkdirArgs{
 		Header: rpc.Header{
 			Rpcvers: 2,
@@ -42,10 +43,13 @@ func (v *Volume) Mkdir(path string, perm os.FileMode) error {
 	res, buf := xdr.Uint32(buf)
 	switch res {
 	case NFS3_OK:
+		util.Debugf("mkdir(%s): created successfully", path)
 		return nil
 
 	default:
-		return NFS3Error(res)
+		err = NFS3Error(res)
+		util.Errorf("mkdir(%s): ", err.Error())
+		return err
 	}
 
 	return nil

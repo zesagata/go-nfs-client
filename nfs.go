@@ -64,8 +64,10 @@ func DialService(nt, addr string, prog rpc.Mapping) (*rpc.Client, error) {
 	}
 
 	var ldr *net.TCPAddr
-
 	usr, err := user.Current()
+
+	// Unless explicitly configured, the target will likely reject connections
+	// from non-privileged ports.
 	if err == nil && usr.Uid == "0" {
 		r1 := rand.New(rand.NewSource(time.Now().UnixNano()))
 
