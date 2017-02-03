@@ -10,17 +10,16 @@ import (
 
 func (v *Target) call(c interface{}) error {
 	buf, err := v.Call(c)
-
-	res, buf := xdr.Uint32(buf)
-	switch res {
-	case NFS3_OK:
-		return nil
-
-	default:
-		err = NFS3Error(res)
+	if err != nil {
 		return err
 	}
 
+	res, buf := xdr.Uint32(buf)
+	if err = NFS3Error(res); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (v *Target) Mkdir(path string, perm os.FileMode) error {

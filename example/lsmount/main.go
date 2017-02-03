@@ -7,12 +7,17 @@ import (
 
 	"github.com/davecheney/nfs"
 	"github.com/davecheney/nfs/rpc"
+	"github.com/davecheney/nfs/util"
 )
 
 func main() {
+	b := strings.Split(os.Args[1], ":")
 
-	host := strings.Split(os.Args[1], ":")[0]
-	target := strings.Split(os.Args[1], ":")[1]
+	host := b[0]
+	target := b[1]
+	dir := os.Args[2]
+
+	util.Infof("host=%s target=%s dir=%s\n", host, target, dir)
 
 	mount, err := nfs.DialMount("tcp", host)
 	if err != nil {
@@ -34,7 +39,6 @@ func main() {
 	}
 	defer v.Close()
 
-	dir := os.Args[2]
 	if err = v.Mkdir(dir, 0775); err != nil {
 		log.Fatalf("mkdir error: %v", err)
 	}

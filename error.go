@@ -66,6 +66,8 @@ var errToName = map[uint32]string{
 
 func NFS3Error(errnum uint32) error {
 	switch errnum {
+	case NFS3_OK:
+		return nil
 	case NFS3ERR_PERM:
 		return os.ErrPermission
 	case NFS3ERR_EXIST:
