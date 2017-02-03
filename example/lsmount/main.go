@@ -11,6 +11,8 @@ import (
 )
 
 func main() {
+	util.DefaultLogger.SetDebug(true)
+
 	b := strings.Split(os.Args[1], ":")
 
 	host := b[0]
@@ -45,6 +47,10 @@ func main() {
 
 	if err = v.Mkdir(dir, 0775); err == nil {
 		log.Fatalf("mkdir expected error")
+	}
+
+	if fh, err := v.Lookup(dir); err != nil {
+		log.Fatalf("lookup error: %s", err.Error())
 	}
 
 	if err = v.RmDir(dir); err != nil {

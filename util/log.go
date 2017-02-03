@@ -19,6 +19,7 @@ import "log"
 var DefaultLogger Logger
 
 type Logger interface {
+	SetDebug(bool)
 	Errorf(format string, args ...interface{})
 	Debugf(format string, args ...interface{})
 	Infof(format string, args ...interface{})
@@ -30,6 +31,10 @@ func init() {
 
 type logger struct {
 	DebugLevel bool
+}
+
+func (l *logger) SetDebug(enable bool) {
+	l.DebugLevel = enable
 }
 
 func (l *logger) Errorf(format string, args ...interface{}) {

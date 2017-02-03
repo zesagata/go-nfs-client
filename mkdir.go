@@ -22,6 +22,43 @@ func (v *Target) call(c interface{}) error {
 	return nil
 }
 
+// Lookup returns a file handle to a given dirent
+func (v *Target) Lookup(path string) ([]byte, error) {
+	type Lookup3Args struct {
+		rpc.Header
+		What Diropargs3
+	}
+
+	buf, err := v.Call(&Lookup3Args{
+		Header: rpc.Header{
+			Rpcvers: 2,
+			Prog:    NFS3_PROG,
+			Vers:    NFS3_VERS,
+			Proc:    NFSPROC3_LOOKUP,
+			Cred:    v.auth,
+			Verf:    rpc.AUTH_NULL,
+		},
+		What: Diropargs3{
+			FH:       v.fh,
+			Filename: path,
+		},
+	})
+
+	if err != nil {
+		util.Debugf("lookup(%s): %s", path, err.Error())
+		return err
+	}
+
+	res, buf := xdr.Uint32(buf)
+	if err = NFS3Error(res); err != nil {
+		return err
+	}
+
+	fh, buf := xdr.Opaque(buf)
+	util.Debugf("lookup(%s): FH 0x%x", path, fh)
+	return fh, nil
+}
+
 func (v *Target) Mkdir(path string, perm os.FileMode) error {
 	type MkdirArgs struct {
 		rpc.Header
