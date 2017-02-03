@@ -19,6 +19,7 @@ const (
 	NFS3_VERS = 3
 
 	NFSPROC3_MKDIR = 9
+	NFSPROC3_RMDIR = 13
 )
 
 type Diropargs3 struct {

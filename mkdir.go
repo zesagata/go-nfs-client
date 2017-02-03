@@ -8,13 +8,13 @@ import (
 	"github.com/davecheney/nfs/xdr"
 )
 
-type MkdirArgs struct {
-	rpc.Header
-	Where Diropargs3
-	Attrs Sattr3
-}
-
 func (v *Target) Mkdir(path string, perm os.FileMode) error {
+	type MkdirArgs struct {
+		rpc.Header
+		Where Diropargs3
+		Attrs Sattr3
+	}
+
 	buf, err := v.Call(&MkdirArgs{
 		Header: rpc.Header{
 			Rpcvers: 2,
@@ -48,9 +48,50 @@ func (v *Target) Mkdir(path string, perm os.FileMode) error {
 
 	default:
 		err = NFS3Error(res)
-		util.Errorf("mkdir(%s): ", err.Error())
+		util.Debugf("mkdir(%s): %s", path, err.Error())
 		return err
 	}
 
 	return nil
+}
+
+func (v *Target) RmDir(path string) error {
+	type RmDir3Args struct {
+		rpc.Header
+		Object Diropargs3
+	}
+
+	buf, err := v.Call(&RmDir3Args{
+		Header: rpc.Header{
+			Rpcvers: 2,
+			Prog:    NFS3_PROG,
+			Vers:    NFS3_VERS,
+			Proc:    NFSPROC3_RMDIR,
+			Cred:    v.auth,
+			Verf:    rpc.AUTH_NULL,
+		},
+		Object: Diropargs3{
+			FH:       v.fh,
+			Filename: path,
+		},
+	})
+
+	if err != nil {
+		return err
+	}
+
+	res, buf := xdr.Uint32(buf)
+	switch res {
+	case NFS3_OK:
+		util.Debugf("rmdir(%s): deleted successfully", path)
+		return nil
+
+	default:
+		err = NFS3Error(res)
+		util.Debugf("rmdir(%s): %s", path, err.Error())
+		return err
+	}
+
+	return nil
+
 }
