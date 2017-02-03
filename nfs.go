@@ -53,8 +53,7 @@ type Fattr struct {
 	GUID                uint32
 	Size                uint64
 	Used                uint64
-	SpecData1           uint32
-	SpecData2           uint32
+	SpecData            [2]uint32
 	FSID                uint64
 	Fileid              uint64
 	Atime, Mtime, Ctime NFS3Time

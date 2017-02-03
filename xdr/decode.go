@@ -63,6 +63,14 @@ func read(r io.Reader, v reflect.Value) error {
 
 		v.SetUint(val)
 
+	case reflect.Slice, reflect.Array:
+		for idx := 0; idx < v.Len(); idx++ {
+			val := v.Index(idx)
+			if err := read(r, val); err != nil {
+				return err
+			}
+		}
+
 	default:
 		return fmt.Errorf("rpc.read: invalid type: %v ", t.String())
 	}
