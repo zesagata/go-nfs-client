@@ -39,7 +39,7 @@ func read(r io.Reader, v reflect.Value) error {
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
-	fmt.Println("value:", v)
+
 	switch t := v.Type(); t.Kind() {
 	case reflect.Struct:
 		for i := 0; i < v.NumField(); i++ {
@@ -47,12 +47,22 @@ func read(r io.Reader, v reflect.Value) error {
 				return err
 			}
 		}
+
 	case reflect.Uint32:
 		var val uint32
 		if err := binary.Read(r, binary.BigEndian, &val); err != nil {
 			return err
 		}
 		v.SetUint(uint64(val))
+
+	case reflect.Uint64:
+		var val uint64
+		if err := binary.Read(r, binary.BigEndian, &val); err != nil {
+			return err
+		}
+
+		v.SetUint(val)
+
 	default:
 		return fmt.Errorf("rpc.read: invalid type: %v ", t.String())
 	}

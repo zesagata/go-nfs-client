@@ -21,6 +21,14 @@ const (
 	NFSPROC3_LOOKUP = 3
 	NFSPROC3_MKDIR  = 9
 	NFSPROC3_RMDIR  = 13
+
+	NF3REG  = 1
+	NF3DIR  = 2
+	NF3BLK  = 3
+	NF3CHR  = 4
+	NF3LNK  = 5
+	NF3SOCK = 6
+	NF3FIFO = 7
 )
 
 type Diropargs3 struct {
@@ -35,6 +43,21 @@ type Sattr3 struct {
 	Size  uint64
 	Atime NFS3Time
 	Mtime NFS3Time
+}
+
+type Fattr struct {
+	Type                uint32
+	Mode                uint32
+	Nlink               uint32
+	UID                 uint32
+	GUID                uint32
+	Size                uint64
+	Used                uint64
+	SpecData1           uint32
+	SpecData2           uint32
+	FSID                uint64
+	Fileid              uint64
+	Atime, Mtime, Ctime NFS3Time
 }
 
 type SetMode struct {

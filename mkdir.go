@@ -1,6 +1,7 @@
 package nfs
 
 import (
+	"bytes"
 	"os"
 
 	"github.com/davecheney/nfs/rpc"
@@ -23,7 +24,7 @@ func (v *Target) call(c interface{}) error {
 }
 
 // Lookup returns a file handle to a given dirent
-func (v *Target) Lookup(path string) ([]byte, error) {
+func (v *Target) Lookup(path string) (*Fattr, []byte, error) {
 	type Lookup3Args struct {
 		rpc.Header
 		What Diropargs3
@@ -46,17 +47,30 @@ func (v *Target) Lookup(path string) ([]byte, error) {
 
 	if err != nil {
 		util.Debugf("lookup(%s): %s", path, err.Error())
-		return err
+		return nil, nil, err
 	}
 
 	res, buf := xdr.Uint32(buf)
 	if err = NFS3Error(res); err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	fh, buf := xdr.Opaque(buf)
 	util.Debugf("lookup(%s): FH 0x%x", path, fh)
-	return fh, nil
+
+	var fattrs *Fattr
+	attrFollows, buf := xdr.Uint32(buf)
+	if attrFollows != 0 {
+		r := bytes.NewBuffer(buf)
+		fattrs = &Fattr{}
+		if err = xdr.Read(r, fattrs); err != nil {
+			return nil, nil, err
+		}
+
+		util.Debugf("fattrs = %#v", fattrs)
+	}
+
+	return fattrs, fh, nil
 }
 
 func (v *Target) Mkdir(path string, perm os.FileMode) error {

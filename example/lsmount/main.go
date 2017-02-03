@@ -49,7 +49,7 @@ func main() {
 		log.Fatalf("mkdir expected error")
 	}
 
-	if fh, err := v.Lookup(dir); err != nil {
+	if _, _, err := v.Lookup(dir); err != nil {
 		log.Fatalf("lookup error: %s", err.Error())
 	}
 
