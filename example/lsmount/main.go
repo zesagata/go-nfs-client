@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -49,6 +50,21 @@ func main() {
 
 	if err = v.Mkdir(dir, 0775); err == nil {
 		log.Fatalf("mkdir expected error")
+	}
+
+	rdr, err := v.Read("data")
+	if err != nil {
+		log.Fatalf("read error: %v", err)
+	}
+
+	buf, err := ioutil.ReadAll(rdr)
+	if err != nil {
+		log.Fatalf("readall error: %v", err)
+	}
+
+	testdata := "testdata\n"
+	if string(buf) != testdata {
+		log.Fatalf("strings didn't match.  Got=0%x expected=0%x", string(buf), testdata)
 	}
 
 	_, _, err = v.Lookup(dir)

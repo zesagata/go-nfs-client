@@ -20,6 +20,7 @@ const (
 
 	// program methods
 	NFSPROC3_LOOKUP      = 3
+	NFSPROC3_READ        = 6
 	NFSPROC3_MKDIR       = 9
 	NFSPROC3_RMDIR       = 13
 	NFSPROC3_READDIRPLUS = 17
