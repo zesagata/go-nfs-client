@@ -49,8 +49,19 @@ func main() {
 		log.Fatalf("mkdir expected error")
 	}
 
-	if _, _, err := v.Lookup(dir); err != nil {
+	_, fh, err := v.Lookup(dir)
+	if err != nil {
 		log.Fatalf("lookup error: %s", err.Error())
+	}
+
+	dirs, err := v.ReadDirPlus(fh)
+	if err != nil {
+		log.Fatalf("readdir error: %s", err.Error())
+	}
+
+	util.Infof("dirs:")
+	for _, dir := range dirs {
+		util.Infof("\t%s", dir.FileName)
 	}
 
 	if err = v.RmDir(dir); err != nil {

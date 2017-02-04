@@ -97,11 +97,77 @@ func (v *Target) Lookup(path string) (*Fattr, []byte, error) {
 		if err = xdr.Read(r, fattrs); err != nil {
 			return nil, nil, err
 		}
-
-		util.Debugf("fattrs = %#v", fattrs)
 	}
 
 	return fattrs, fh, nil
+}
+
+type EntryPlus struct {
+	FileId   uint64
+	FileName string
+	Cookie   uint64
+	Attr     struct {
+		Follows uint32
+		Attr    Fattr
+	}
+	FHSet uint32
+	FH    string
+}
+
+func (v *Target) ReadDirPlus(fh []byte) ([]EntryPlus, error) {
+	type ReadDirPlus3Args struct {
+		rpc.Header
+		FH         []byte
+		Cookie     uint64
+		CookieVerf uint64
+		DirCount   uint32
+		MaxCount   uint32
+	}
+
+	type DirListOK struct {
+		DirAttrs struct {
+			Follows  uint32
+			DirAttrs Fattr
+		}
+		CookieVerf  uint64
+		Follows     uint32
+		DirListPlus struct {
+			Entries []EntryPlus
+			EOF     uint32
+		}
+	}
+
+	buf, err := v.Call(&ReadDirPlus3Args{
+		Header: rpc.Header{
+			Rpcvers: 2,
+			Prog:    NFS3_PROG,
+			Vers:    NFS3_VERS,
+			Proc:    NFSPROC3_READDIRPLUS,
+			Cred:    v.auth,
+			Verf:    rpc.AUTH_NULL,
+		},
+		FH:       v.fh,
+		DirCount: 512,
+		MaxCount: 4096,
+	})
+
+	if err != nil {
+		util.Debugf("readdir(%x): %s", fh, err.Error())
+		return nil, err
+	}
+
+	res, buf := xdr.Uint32(buf)
+	if err = NFS3Error(res); err != nil {
+		return nil, err
+	}
+
+	r := bytes.NewBuffer(buf)
+	dirlist := &DirListOK{}
+	if err = xdr.Read(r, dirlist); err != nil {
+		return nil, err
+	}
+
+	return dirlist.DirListPlus.Entries, nil
 }
 
 func (v *Target) Mkdir(path string, perm os.FileMode) error {

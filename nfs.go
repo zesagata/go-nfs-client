@@ -18,10 +18,13 @@ const (
 	NFS3_PROG = 100003
 	NFS3_VERS = 3
 
-	NFSPROC3_LOOKUP = 3
-	NFSPROC3_MKDIR  = 9
-	NFSPROC3_RMDIR  = 13
+	// program methods
+	NFSPROC3_LOOKUP      = 3
+	NFSPROC3_MKDIR       = 9
+	NFSPROC3_RMDIR       = 13
+	NFSPROC3_READDIRPLUS = 17
 
+	// file types
 	NF3REG  = 1
 	NF3DIR  = 2
 	NF3BLK  = 3
