@@ -15,6 +15,7 @@ type Target struct {
 	auth    rpc.Auth
 	fh      []byte
 	dirPath string
+	fsinfo  *FSInfo
 }
 
 func NewTarget(nt, addr string, auth rpc.Auth, fh []byte, dirpath string) (*Target, error) {
@@ -37,6 +38,14 @@ func NewTarget(nt, addr string, auth rpc.Auth, fh []byte, dirpath string) (*Targ
 		dirPath: dirpath,
 	}
 
+	fsinfo, err := vol.FSInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	vol.fsinfo = fsinfo
+	util.Debugf("%s:%s fsinfo=%#v", addr, dirpath, fsinfo)
+
 	return vol, nil
 }
 
@@ -52,6 +61,43 @@ func (v *Target) call(c interface{}) error {
 	}
 
 	return nil
+}
+
+func (v *Target) FSInfo() (*FSInfo, error) {
+	type FSInfoArgs struct {
+		rpc.Header
+		FsRoot []byte
+	}
+
+	buf, err := v.Call(&FSInfoArgs{
+		Header: rpc.Header{
+			Rpcvers: 2,
+			Prog:    NFS3_PROG,
+			Vers:    NFS3_VERS,
+			Proc:    NFSPROC3_FSINFO,
+			Cred:    v.auth,
+			Verf:    rpc.AUTH_NULL,
+		},
+		FsRoot: v.fh,
+	})
+
+	if err != nil {
+		util.Debugf("fsroot: %s", err.Error())
+		return nil, err
+	}
+
+	res, buf := xdr.Uint32(buf)
+	if err = NFS3Error(res); err != nil {
+		return nil, err
+	}
+
+	fsinfo := new(FSInfo)
+	r := bytes.NewBuffer(buf)
+	if err = xdr.Read(r, fsinfo); err != nil {
+		return nil, err
+	}
+
+	return fsinfo, nil
 }
 
 // Lookup returns a file handle to a given dirent
@@ -102,19 +148,12 @@ func (v *Target) Lookup(path string) (*Fattr, []byte, error) {
 	return fattrs, fh, nil
 }
 
-type EntryPlus struct {
-	FileId   uint64
-	FileName string
-	Cookie   uint64
-	Attr     struct {
-		Follows uint32
-		Attr    Fattr
+func (v *Target) ReadDirPlus(dir string) ([]EntryPlus, error) {
+	_, fh, err := v.Lookup(dir)
+	if err != nil {
+		return nil, err
 	}
-	FHSet uint32
-	FH    string
-}
 
-func (v *Target) ReadDirPlus(fh []byte) ([]EntryPlus, error) {
 	type ReadDirPlus3Args struct {
 		rpc.Header
 		FH         []byte

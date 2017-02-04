@@ -23,6 +23,7 @@ const (
 	NFSPROC3_MKDIR       = 9
 	NFSPROC3_RMDIR       = 13
 	NFSPROC3_READDIRPLUS = 17
+	NFSPROC3_FSINFO      = 19
 
 	// file types
 	NF3REG  = 1
@@ -48,6 +49,21 @@ type Sattr3 struct {
 	Mtime NFS3Time
 }
 
+type SetMode struct {
+	Set  uint32
+	Mode uint32
+}
+
+type SetUID struct {
+	Set uint32
+	UID uint32
+}
+
+type NFS3Time struct {
+	Seconds  uint32
+	Nseconds uint32
+}
+
 type Fattr struct {
 	Type                uint32
 	Mode                uint32
@@ -62,19 +78,30 @@ type Fattr struct {
 	Atime, Mtime, Ctime NFS3Time
 }
 
-type SetMode struct {
-	Set  uint32
-	Mode uint32
+type EntryPlus struct {
+	FileId   uint64
+	FileName string
+	Cookie   uint64
+	Attr     struct {
+		Follows uint32
+		Attr    Fattr
+	}
+	FHSet uint32
+	FH    string
 }
 
-type SetUID struct {
-	Set uint32
-	UID uint32
-}
-
-type NFS3Time struct {
-	Seconds  uint32
-	Nseconds uint32
+type FSInfo struct {
+	Follows    uint32
+	RTMax      uint32
+	RTPref     uint32
+	RTMult     uint32
+	WTMax      uint32
+	WTPref     uint32
+	WTMult     uint32
+	DTPref     uint32
+	Size       uint64
+	TimeDelta  NFS3Time
+	Properties uint32
 }
 
 // Dial an RPC svc after getting the port from the portmapper
@@ -102,7 +129,7 @@ func DialService(nt, addr string, prog rpc.Mapping) (*rpc.Client, error) {
 		for p = r1.Intn(1024); p < 0; {
 		}
 
-		util.Debugf("using random port %d", p)
+		util.Debugf("using random port %d -> %d", p, port)
 		ldr = &net.TCPAddr{
 			Port: p,
 		}
