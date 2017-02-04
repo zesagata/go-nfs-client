@@ -1,7 +1,6 @@
 NFS Client for Golang
 =====================
 
-Installation
-------------
+[godoc]:http://godoc.org/github.com/fdawg4l/nfs
 
-This library uses gb to build. Simply run gb in the root of the checkout then have a look in the {{_bin}} directory for examples.
+This is forked from [here](https://github.com/davecheney/nfs).  The objective is to build a minimal NFSv3 client.
