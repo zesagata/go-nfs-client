@@ -4,13 +4,20 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"math/rand"
 	"net"
 	"sync/atomic"
+	"time"
 
 	"github.com/davecheney/nfs/xdr"
 )
 
-var xid = uint32(0xcafebabe)
+var xid uint32
+
+func init() {
+	// seed the XID (which is set by the client)
+	xid = rand.New(rand.NewSource(time.Now().UnixNano())).Uint32()
+}
 
 type Client struct {
 	transport

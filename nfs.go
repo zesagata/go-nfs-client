@@ -53,7 +53,7 @@ type Fattr struct {
 	Mode                uint32
 	Nlink               uint32
 	UID                 uint32
-	GUID                uint32
+	GID                 uint32
 	Size                uint64
 	Used                uint64
 	SpecData            [2]uint32

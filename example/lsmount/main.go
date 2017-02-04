@@ -2,8 +2,10 @@ package main
 
 import (
 	"log"
+	"math/rand"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/davecheney/nfs"
 	"github.com/davecheney/nfs/rpc"
@@ -28,7 +30,7 @@ func main() {
 	defer mount.Close()
 
 	auth := &rpc.AUTH_UNIX{
-		Stamp:       0x017bbf7f,
+		Stamp:       rand.New(rand.NewSource(time.Now().UnixNano())).Uint32(),
 		Machinename: "hasselhoff",
 		Uid:         1001,
 		Gid:         1001,
@@ -61,7 +63,7 @@ func main() {
 
 	util.Infof("dirs:")
 	for _, dir := range dirs {
-		util.Infof("\t%s", dir.FileName)
+		util.Infof("\t%s\t%d:%d\t0%o", dir.FileName, dir.Attr.Attr.UID, dir.Attr.Attr.GID, dir.Attr.Attr.Mode)
 	}
 
 	if err = v.RmDir(dir); err != nil {
