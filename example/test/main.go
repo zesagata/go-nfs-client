@@ -55,14 +55,32 @@ func main() {
 		log.Fatalf("mkdir expected error")
 	}
 
+	// make a nested dir
+	if _, err = v.Mkdir(dir+"/a", 0775); err != nil {
+		log.Fatalf("mkdir error: %v", err)
+	}
+
+	// make a nested dir
+	if _, err = v.Mkdir(dir+"/a/b", 0775); err != nil {
+		log.Fatalf("mkdir error: %v", err)
+	}
+
 	// 10 MB file
 	if err = testFileRW(v, "20mb", 10*1024*1024); err != nil {
 		log.Fatalf("fail")
 	}
 
+	if err = v.Remove("20mb"); err != nil {
+		log.Fatalf("rm(20mb) err: %s", err.Error())
+	}
+
 	// 7b file
-	if err = testFileRW(v, "7mb", 7); err != nil {
+	if err = testFileRW(v, "7b", 7); err != nil {
 		log.Fatalf("fail")
+	}
+
+	if err = v.Remove("7b"); err != nil {
+		log.Fatalf("rm(7b) err: %s", err.Error())
 	}
 
 	_, _, err = v.Lookup(dir)
@@ -95,13 +113,13 @@ func testFileRW(v *nfs.Target, name string, filesize uint64) error {
 	// create a temp file
 	f, err := os.Open("/dev/urandom")
 	if err != nil {
-		util.Debugf("error openning random: %s", err.Error())
+		util.Errorf("error openning random: %s", err.Error())
 		return err
 	}
 
 	wr, err := v.Write(name, 0777)
 	if err != nil {
-		util.Debugf("write fail: %s", err.Error())
+		util.Errorf("write fail: %s", err.Error())
 		return err
 	}
 
@@ -112,16 +130,21 @@ func testFileRW(v *nfs.Target, name string, filesize uint64) error {
 	// Copy filesize
 	_, err = io.CopyN(wr, t, int64(filesize))
 	if err != nil {
-		util.Debugf("error copying: %s", err.Error())
+		util.Errorf("error copying: %s", err.Error())
 		return err
 	}
 	expectedSum := h.Sum(nil)
+
+	if err = wr.Close(); err != nil {
+		util.Errorf("error committing: %s", err.Error())
+		return err
+	}
 
 	//
 	// get the file we wrote and calc the sum
 	rdr, err := v.Read(name)
 	if err != nil {
-		util.Debugf("read error: %v", err)
+		util.Errorf("read error: %v", err)
 		return err
 	}
 
@@ -130,7 +153,7 @@ func testFileRW(v *nfs.Target, name string, filesize uint64) error {
 
 	_, err = ioutil.ReadAll(t)
 	if err != nil {
-		util.Debugf("readall error: %v", err)
+		util.Errorf("readall error: %v", err)
 		return err
 	}
 	actualSum := h.Sum(nil)

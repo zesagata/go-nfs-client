@@ -3,6 +3,9 @@ package nfs
 import (
 	"bytes"
 	"os"
+	"path"
+	"path/filepath"
+	"strings"
 
 	"github.com/davecheney/nfs/rpc"
 	"github.com/davecheney/nfs/util"
@@ -96,8 +99,36 @@ func (v *Target) FSInfo() (*FSInfo, error) {
 	return fsinfo, nil
 }
 
-// Lookup returns a file handle to a given dirent
-func (v *Target) Lookup(path string) (*Fattr, []byte, error) {
+// Lookup returns attributes and the file handle to a given dirent
+func (v *Target) Lookup(p string) (*Fattr, []byte, error) {
+	var (
+		err   error
+		fattr *Fattr
+		fh    = v.fh
+	)
+
+	// desecend down a path heirarchy to get the last elem's fh
+	dirents := strings.Split(path.Clean(p), "/")
+	for _, dirent := range dirents {
+		// we're assuming the root is always the root of the mount
+		if dirent == "." || dirent == "" {
+			util.Debugf("root -> 0x%x", fh)
+			continue
+		}
+
+		fattr, fh, err = v.lookup(fh, dirent)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		util.Debugf("%s -> 0x%x", dirent, fh)
+	}
+
+	return fattr, fh, nil
+}
+
+// lookup returns the same as above, but by fh and name
+func (v *Target) lookup(fh []byte, name string) (*Fattr, []byte, error) {
 	type Lookup3Args struct {
 		rpc.Header
 		What Diropargs3
@@ -113,18 +144,18 @@ func (v *Target) Lookup(path string) (*Fattr, []byte, error) {
 			Verf:    rpc.AUTH_NULL,
 		},
 		What: Diropargs3{
-			FH:       v.fh,
-			Filename: path,
+			FH:       fh,
+			Filename: name,
 		},
 	})
 
 	if err != nil {
-		util.Debugf("lookup(%s): %s", path, err.Error())
+		util.Debugf("lookup(%s): %s", name, err.Error())
 		return nil, nil, err
 	}
 
-	fh, buf := xdr.Opaque(buf)
-	util.Debugf("lookup(%s): FH 0x%x", path, fh)
+	fh, buf = xdr.Opaque(buf)
+	util.Debugf("lookup(%s): FH 0x%x", name, fh)
 
 	var fattrs *Fattr
 	attrFollows, buf := xdr.Uint32(buf)
@@ -176,7 +207,7 @@ func (v *Target) ReadDirPlus(dir string) ([]EntryPlus, error) {
 			Cred:    v.auth,
 			Verf:    rpc.AUTH_NULL,
 		},
-		FH:       v.fh,
+		FH:       fh,
 		DirCount: 512,
 		MaxCount: 4096,
 	})
@@ -197,6 +228,12 @@ func (v *Target) ReadDirPlus(dir string) ([]EntryPlus, error) {
 
 // Creates a directory of the given name and returns its handle
 func (v *Target) Mkdir(path string, perm os.FileMode) ([]byte, error) {
+	dir, newDir := filepath.Split(path)
+	_, fh, err := v.Lookup(dir)
+	if err != nil {
+		return nil, err
+	}
+
 	type MkdirArgs struct {
 		rpc.Header
 		Where Diropargs3
@@ -213,8 +250,8 @@ func (v *Target) Mkdir(path string, perm os.FileMode) ([]byte, error) {
 			Verf:    rpc.AUTH_NULL,
 		},
 		Where: Diropargs3{
-			FH:       v.fh,
-			Filename: path,
+			FH:       fh,
+			Filename: newDir,
 		},
 		Attrs: Sattr3{
 			Mode: SetMode{
@@ -229,7 +266,6 @@ func (v *Target) Mkdir(path string, perm os.FileMode) ([]byte, error) {
 		return nil, err
 	}
 
-	var fh []byte
 	follows, buf := xdr.Uint32(buf)
 	if follows != 0 {
 		fh, buf = xdr.Opaque(buf)
@@ -240,12 +276,17 @@ func (v *Target) Mkdir(path string, perm os.FileMode) ([]byte, error) {
 }
 
 func (v *Target) RmDir(path string) error {
+	dir, newDir := filepath.Split(path)
+	_, fh, err := v.Lookup(dir)
+	if err != nil {
+		return err
+	}
 	type RmDir3Args struct {
 		rpc.Header
 		Object Diropargs3
 	}
 
-	_, err := v.call(&RmDir3Args{
+	_, err = v.call(&RmDir3Args{
 		Header: rpc.Header{
 			Rpcvers: 2,
 			Prog:    NFS3_PROG,
@@ -255,8 +296,8 @@ func (v *Target) RmDir(path string) error {
 			Verf:    rpc.AUTH_NULL,
 		},
 		Object: Diropargs3{
-			FH:       v.fh,
-			Filename: path,
+			FH:       fh,
+			Filename: newDir,
 		},
 	})
 
@@ -269,8 +310,14 @@ func (v *Target) RmDir(path string) error {
 	return nil
 }
 
-// create a file with name in the given directory specific by the fh with the given mode
-func (v *Target) Create(fh string, name string, perm os.FileMode) ([]byte, error) {
+// create a file with name the given mode
+func (v *Target) Create(path string, perm os.FileMode) ([]byte, error) {
+	dir, newFile := filepath.Split(path)
+	_, fh, err := v.Lookup(dir)
+	if err != nil {
+		return nil, err
+	}
+
 	type How struct {
 		// 0 : UNCHECKED (default)
 		// 1 : GUARDED
@@ -286,7 +333,7 @@ func (v *Target) Create(fh string, name string, perm os.FileMode) ([]byte, error
 
 	type Create3Res struct {
 		Follows uint32
-		FH      string
+		FH      []byte
 	}
 
 	buf, err := v.call(&Create3Args{
@@ -299,8 +346,8 @@ func (v *Target) Create(fh string, name string, perm os.FileMode) ([]byte, error
 			Verf:    rpc.AUTH_NULL,
 		},
 		Where: Diropargs3{
-			FH:       []byte(fh),
-			Filename: name,
+			FH:       fh,
+			Filename: newFile,
 		},
 		HW: How{
 			Attr: Sattr3{
@@ -313,7 +360,7 @@ func (v *Target) Create(fh string, name string, perm os.FileMode) ([]byte, error
 	})
 
 	if err != nil {
-		util.Debugf("create(%s): %s", name, err.Error())
+		util.Debugf("create(%s): %s", path, err.Error())
 		return nil, err
 	}
 
@@ -323,6 +370,41 @@ func (v *Target) Create(fh string, name string, perm os.FileMode) ([]byte, error
 		return nil, err
 	}
 
-	util.Debugf("create(%s): createted successfully", name)
-	return []byte(res.FH), nil
+	util.Debugf("create(%s): created successfully", path)
+	return res.FH, nil
+}
+
+// Remove a file
+func (v *Target) Remove(path string) error {
+	dir, deleteFile := filepath.Split(path)
+	_, fh, err := v.Lookup(dir)
+	if err != nil {
+		return err
+	}
+	type RemoveArgs struct {
+		rpc.Header
+		Object Diropargs3
+	}
+
+	_, err = v.call(&RemoveArgs{
+		Header: rpc.Header{
+			Rpcvers: 2,
+			Prog:    NFS3_PROG,
+			Vers:    NFS3_VERS,
+			Proc:    NFSPROC3_REMOVE,
+			Cred:    v.auth,
+			Verf:    rpc.AUTH_NULL,
+		},
+		Object: Diropargs3{
+			FH:       fh,
+			Filename: deleteFile,
+		},
+	})
+
+	if err != nil {
+		util.Debugf("remove(%s): %s", deleteFile, err.Error())
+		return err
+	}
+
+	return nil
 }

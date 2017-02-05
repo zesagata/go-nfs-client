@@ -22,7 +22,7 @@ type FileWriter struct {
 func (wr *FileWriter) Write(p []byte) (int, error) {
 	type WriteArgs struct {
 		rpc.Header
-		FH     string
+		FH     []byte
 		Offset uint64
 		Count  uint32
 
@@ -43,7 +43,7 @@ func (wr *FileWriter) Write(p []byte) (int, error) {
 			Cred:    wr.auth,
 			Verf:    rpc.AUTH_NULL,
 		},
-		FH:       string(wr.fh),
+		FH:       wr.fh,
 		Offset:   wr.curr,
 		Count:    uint32(writeSize),
 		How:      2,
@@ -91,12 +91,12 @@ func (wr *FileWriter) Close() error {
 	return nil
 }
 
-// Write writes to an existing file at path
+// Write writes to an existing file or creates one
 func (v *Target) Write(path string, perm os.FileMode) (io.WriteCloser, error) {
 	_, fh, err := v.Lookup(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			fh, err = v.Create(string(v.fh), path, perm)
+			fh, err = v.Create(path, perm)
 			if err != nil {
 				return nil, err
 			}

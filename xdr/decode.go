@@ -115,30 +115,55 @@ func read(r io.Reader, v reflect.Value) error {
 
 	case reflect.Slice:
 		debugf("ENTER slice")
-		slc := reflect.MakeSlice(v.Type(), 0, 0)
-		for {
-
-			val := reflect.New(v.Type().Elem())
-			if val.Kind() == reflect.Ptr {
-				val = val.Elem()
-			}
-			if err := read(r, val); err != nil {
+		switch t.Elem().Kind() {
+		case reflect.Uint8:
+			var l uint32
+			if err := binary.Read(r, binary.BigEndian, &l); err != nil {
 				return err
 			}
 
-			slc = reflect.Append(slc, val)
-
-			// slices have a "follows" 32b integer that is non-zero when an elem exists
-			var follows uint32
-			if err := binary.Read(r, binary.BigEndian, &follows); err != nil {
+			b := make([]byte, l, l)
+			if err := binary.Read(r, binary.BigEndian, b); err != nil {
 				return err
 			}
 
-			if follows == 0 {
-				break
+			// drain the fill
+			if l%4 > 0 {
+				fillBytes := make([]byte, 4-l%4)
+				_, _ = r.Read(fillBytes)
 			}
+
+			v.SetBytes(b)
+
+		case reflect.Struct:
+			slc := reflect.MakeSlice(v.Type(), 0, 0)
+			for {
+				val := reflect.New(v.Type().Elem())
+				if val.Kind() == reflect.Ptr {
+					val = val.Elem()
+				}
+				if err := read(r, val); err != nil {
+					return err
+				}
+
+				slc = reflect.Append(slc, val)
+
+				// slices have a "follows" 32b integer that is non-zero when an elem exists
+				var follows uint32
+				if err := binary.Read(r, binary.BigEndian, &follows); err != nil {
+					return err
+				}
+
+				if follows == 0 {
+					break
+				}
+			}
+			v.Set(slc)
+
+		default:
+			return fmt.Errorf("rpc.read: invalid type: %v ", t.String())
 		}
-		v.Set(slc)
+
 		debugf("EXIT slice")
 
 	default:
