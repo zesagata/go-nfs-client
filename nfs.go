@@ -21,10 +21,13 @@ const (
 	// program methods
 	NFSPROC3_LOOKUP      = 3
 	NFSPROC3_READ        = 6
+	NFSPROC3_WRITE       = 7
+	NFSPROC3_CREATE      = 8
 	NFSPROC3_MKDIR       = 9
 	NFSPROC3_RMDIR       = 13
 	NFSPROC3_READDIRPLUS = 17
 	NFSPROC3_FSINFO      = 19
+	NFSPROC3_COMMIT      = 21
 
 	// file types
 	NF3REG  = 1

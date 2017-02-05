@@ -49,18 +49,19 @@ func NewTarget(nt, addr string, auth rpc.Auth, fh []byte, dirpath string) (*Targ
 	return vol, nil
 }
 
-func (v *Target) call(c interface{}) error {
+// wraps the Call function to check status and decode errors
+func (v *Target) call(c interface{}) ([]byte, error) {
 	buf, err := v.Call(c)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	res, buf := xdr.Uint32(buf)
 	if err = NFS3Error(res); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return buf, nil
 }
 
 func (v *Target) FSInfo() (*FSInfo, error) {
@@ -69,7 +70,7 @@ func (v *Target) FSInfo() (*FSInfo, error) {
 		FsRoot []byte
 	}
 
-	buf, err := v.Call(&FSInfoArgs{
+	buf, err := v.call(&FSInfoArgs{
 		Header: rpc.Header{
 			Rpcvers: 2,
 			Prog:    NFS3_PROG,
@@ -83,11 +84,6 @@ func (v *Target) FSInfo() (*FSInfo, error) {
 
 	if err != nil {
 		util.Debugf("fsroot: %s", err.Error())
-		return nil, err
-	}
-
-	res, buf := xdr.Uint32(buf)
-	if err = NFS3Error(res); err != nil {
 		return nil, err
 	}
 
@@ -107,7 +103,7 @@ func (v *Target) Lookup(path string) (*Fattr, []byte, error) {
 		What Diropargs3
 	}
 
-	buf, err := v.Call(&Lookup3Args{
+	buf, err := v.call(&Lookup3Args{
 		Header: rpc.Header{
 			Rpcvers: 2,
 			Prog:    NFS3_PROG,
@@ -124,11 +120,6 @@ func (v *Target) Lookup(path string) (*Fattr, []byte, error) {
 
 	if err != nil {
 		util.Debugf("lookup(%s): %s", path, err.Error())
-		return nil, nil, err
-	}
-
-	res, buf := xdr.Uint32(buf)
-	if err = NFS3Error(res); err != nil {
 		return nil, nil, err
 	}
 
@@ -176,7 +167,7 @@ func (v *Target) ReadDirPlus(dir string) ([]EntryPlus, error) {
 		}
 	}
 
-	buf, err := v.Call(&ReadDirPlus3Args{
+	buf, err := v.call(&ReadDirPlus3Args{
 		Header: rpc.Header{
 			Rpcvers: 2,
 			Prog:    NFS3_PROG,
@@ -195,11 +186,6 @@ func (v *Target) ReadDirPlus(dir string) ([]EntryPlus, error) {
 		return nil, err
 	}
 
-	res, buf := xdr.Uint32(buf)
-	if err = NFS3Error(res); err != nil {
-		return nil, err
-	}
-
 	r := bytes.NewBuffer(buf)
 	dirlist := &DirListOK{}
 	if err = xdr.Read(r, dirlist); err != nil {
@@ -209,14 +195,15 @@ func (v *Target) ReadDirPlus(dir string) ([]EntryPlus, error) {
 	return dirlist.DirListPlus.Entries, nil
 }
 
-func (v *Target) Mkdir(path string, perm os.FileMode) error {
+// Creates a directory of the given name and returns its handle
+func (v *Target) Mkdir(path string, perm os.FileMode) ([]byte, error) {
 	type MkdirArgs struct {
 		rpc.Header
 		Where Diropargs3
 		Attrs Sattr3
 	}
 
-	err := v.call(&MkdirArgs{
+	buf, err := v.call(&MkdirArgs{
 		Header: rpc.Header{
 			Rpcvers: 2,
 			Prog:    NFS3_PROG,
@@ -239,11 +226,17 @@ func (v *Target) Mkdir(path string, perm os.FileMode) error {
 
 	if err != nil {
 		util.Debugf("mkdir(%s): %s", path, err.Error())
-		return err
+		return nil, err
 	}
 
-	util.Debugf("mkdir(%s): created successfully", path)
-	return nil
+	var fh []byte
+	follows, buf := xdr.Uint32(buf)
+	if follows != 0 {
+		fh, buf = xdr.Opaque(buf)
+	}
+
+	util.Debugf("mkdir(%s): created successfully (0x%x)", path, fh)
+	return fh, nil
 }
 
 func (v *Target) RmDir(path string) error {
@@ -252,7 +245,7 @@ func (v *Target) RmDir(path string) error {
 		Object Diropargs3
 	}
 
-	err := v.call(&RmDir3Args{
+	_, err := v.call(&RmDir3Args{
 		Header: rpc.Header{
 			Rpcvers: 2,
 			Prog:    NFS3_PROG,
@@ -274,4 +267,62 @@ func (v *Target) RmDir(path string) error {
 
 	util.Debugf("rmdir(%s): deleted successfully", path)
 	return nil
+}
+
+// create a file with name in the given directory specific by the fh with the given mode
+func (v *Target) Create(fh string, name string, mode uint32) ([]byte, error) {
+	type How struct {
+		// 0 : UNCHECKED (default)
+		// 1 : GUARDED
+		// 2 : EXCLUSIVE
+		Mode uint32
+		Attr Sattr3
+	}
+	type Create3Args struct {
+		rpc.Header
+		Where Diropargs3
+		HW    How
+	}
+
+	type Create3Res struct {
+		Follows uint32
+		FH      string
+	}
+
+	buf, err := v.call(&Create3Args{
+		Header: rpc.Header{
+			Rpcvers: 2,
+			Prog:    NFS3_PROG,
+			Vers:    NFS3_VERS,
+			Proc:    NFSPROC3_CREATE,
+			Cred:    v.auth,
+			Verf:    rpc.AUTH_NULL,
+		},
+		Where: Diropargs3{
+			FH:       []byte(fh),
+			Filename: name,
+		},
+		HW: How{
+			Attr: Sattr3{
+				Mode: SetMode{
+					Set:  uint32(1),
+					Mode: mode,
+				},
+			},
+		},
+	})
+
+	if err != nil {
+		util.Debugf("create(%s): %s", name, err.Error())
+		return nil, err
+	}
+
+	res := &Create3Res{}
+	r := bytes.NewBuffer(buf)
+	if err = xdr.Read(r, res); err != nil {
+		return nil, err
+	}
+
+	util.Debugf("create(%s): createted successfully", name)
+	return []byte(res.FH), nil
 }

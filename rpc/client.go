@@ -33,6 +33,7 @@ func DialTCP(network string, ldr *net.TCPAddr, addr string) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	t := &tcpTransport{
 		Reader:      bufio.NewReader(conn),
 		WriteCloser: conn,
@@ -46,25 +47,31 @@ func (c *Client) Call(call interface{}) ([]byte, error) {
 		Msgtype: 0,
 		Body:    call,
 	}
+
 	w := new(bytes.Buffer)
 	if err := xdr.Write(w, msg); err != nil {
 		return nil, err
 	}
+
 	if err := c.send(w.Bytes()); err != nil {
 		return nil, err
 	}
+
 	buf, err := c.recv()
 	if err != nil {
 		return nil, err
 	}
+
 	xid, buf := xdr.Uint32(buf)
 	if xid != msg.Xid {
 		return nil, fmt.Errorf("xid did not match, expected: %x, received: %x", msg.Xid, xid)
 	}
+
 	mtype, buf := xdr.Uint32(buf)
 	if mtype != 1 {
 		return nil, fmt.Errorf("message as not a reply: %d", mtype)
 	}
+
 	reply_stat, buf := xdr.Uint32(buf)
 	switch reply_stat {
 	case MSG_ACCEPTED:
@@ -73,6 +80,7 @@ func (c *Client) Call(call interface{}) ([]byte, error) {
 		_ = buf[0:int(opaque_len)]
 		buf = buf[opaque_len:]
 		accept_stat, buf := xdr.Uint32(buf)
+
 		switch accept_stat {
 		case SUCCESS:
 			return buf, nil
@@ -84,6 +92,7 @@ func (c *Client) Call(call interface{}) ([]byte, error) {
 		default:
 			return nil, fmt.Errorf("rpc: %d", accept_stat)
 		}
+
 	case MSG_DENIED:
 		rejected_stat, _ := xdr.Uint32(buf)
 		switch rejected_stat {
@@ -92,8 +101,10 @@ func (c *Client) Call(call interface{}) ([]byte, error) {
 		default:
 			return nil, fmt.Errorf("rejected_stat was not valid: %d", rejected_stat)
 		}
+
 	default:
 		return nil, fmt.Errorf("reply_stat was not valid: %d", reply_stat)
 	}
+
 	panic("unreachable")
 }

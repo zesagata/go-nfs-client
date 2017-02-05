@@ -9,19 +9,18 @@ import (
 	"github.com/davecheney/nfs/xdr"
 )
 
-type NFSFileReader struct {
+type FileReader struct {
 	*Target
 
 	// current position of the reader
-	curr   uint32
+	curr   uint64
 	fsinfo *FSInfo
 
 	// filehandle to the file
 	fh string
 }
 
-func (rdr *NFSFileReader) Read(p []byte) (int, error) {
-	util.Debugf("read called")
+func (rdr *FileReader) Read(p []byte) (int, error) {
 	type ReadArgs struct {
 		rpc.Header
 		FH     string
@@ -41,7 +40,10 @@ func (rdr *NFSFileReader) Read(p []byte) (int, error) {
 		}
 	}
 
-	buf, err := rdr.Call(&ReadArgs{
+	readSize := uint32(min(uint64(rdr.fsinfo.RTPref), uint64(len(p))))
+	util.Debugf("read(%x) len=%d offset=%d", rdr.fh, readSize, rdr.curr)
+
+	buf, err := rdr.call(&ReadArgs{
 		Header: rpc.Header{
 			Rpcvers: 2,
 			Prog:    NFS3_PROG,
@@ -52,16 +54,11 @@ func (rdr *NFSFileReader) Read(p []byte) (int, error) {
 		},
 		FH:     rdr.fh,
 		Offset: uint64(rdr.curr),
-		Count:  rdr.fsinfo.RTPref,
+		Count:  readSize,
 	})
 
 	if err != nil {
 		util.Debugf("read(%x): %s", rdr.fh, err.Error())
-		return 0, err
-	}
-
-	res, buf := xdr.Uint32(buf)
-	if err = NFS3Error(res); err != nil {
 		return 0, err
 	}
 
@@ -71,16 +68,13 @@ func (rdr *NFSFileReader) Read(p []byte) (int, error) {
 		return 0, err
 	}
 
-	util.Debugf("readres = %#v", readres)
-
-	rdr.curr = rdr.curr + readres.Data.Length
+	rdr.curr = rdr.curr + uint64(readres.Data.Length)
 	n, err := r.Read(p[:readres.Data.Length])
 	if err != nil {
 		return n, err
 	}
 
 	if readres.Eof != 0 {
-		util.Debugf("eof = 0x%x", readres.Eof)
 		err = io.EOF
 	}
 
@@ -93,12 +87,18 @@ func (v *Target) Read(path string) (io.Reader, error) {
 		return nil, err
 	}
 
-	rdr := &NFSFileReader{
+	rdr := &FileReader{
 		Target: v,
 		fsinfo: v.fsinfo,
 		fh:     string(fh),
 	}
-	util.Debugf("rdr = %#v", rdr)
 
 	return rdr, nil
+}
+
+func min(x, y uint64) uint64 {
+	if x > y {
+		return y
+	}
+	return x
 }

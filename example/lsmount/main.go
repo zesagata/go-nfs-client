@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"io"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -44,28 +47,56 @@ func main() {
 	}
 	defer v.Close()
 
-	if err = v.Mkdir(dir, 0775); err != nil {
+	if _, err = v.Mkdir(dir, 0775); err != nil {
 		log.Fatalf("mkdir error: %v", err)
 	}
 
-	if err = v.Mkdir(dir, 0775); err == nil {
+	if _, err = v.Mkdir(dir, 0775); err == nil {
 		log.Fatalf("mkdir expected error")
 	}
 
+	// create a temp file
+	f, err := os.Open("/dev/urandom")
+	if err != nil {
+		log.Fatalf("error openning random: %s", err.Error())
+	}
+
+	wr, err := v.Write("data", 0777)
+	if err != nil {
+		log.Fatalf("write fail: %s", err.Error())
+	}
+
+	// calculate the sha
+	h := sha256.New()
+	t := io.TeeReader(f, h)
+
+	// Copy 20MB
+	_, err = io.CopyN(wr, t, 20*1024*1024)
+	if err != nil {
+		log.Fatalf("error copying: %s", err.Error())
+	}
+	expectedSum := h.Sum(nil)
+
+	//
+	// get the file we wrote and calc the sum
 	rdr, err := v.Read("data")
 	if err != nil {
 		log.Fatalf("read error: %v", err)
 	}
 
-	buf, err := ioutil.ReadAll(rdr)
+	h = sha256.New()
+	t = io.TeeReader(rdr, h)
+
+	_, err = ioutil.ReadAll(t)
 	if err != nil {
 		log.Fatalf("readall error: %v", err)
 	}
+	actualSum := h.Sum(nil)
 
-	testdata := "testdata\n"
-	if string(buf) != testdata {
-		log.Fatalf("strings didn't match.  Got=0%x expected=0%x", string(buf), testdata)
+	if bytes.Compare(actualSum, expectedSum) != 0 {
+		log.Fatalf("sums didn't match. actual=%x expected=%s", actualSum, expectedSum) //  Got=0%x expected=0%x", string(buf), testdata)
 	}
+	log.Printf("Sums match %x %x", actualSum, expectedSum)
 
 	_, _, err = v.Lookup(dir)
 	if err != nil {
