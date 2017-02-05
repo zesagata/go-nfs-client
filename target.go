@@ -270,7 +270,7 @@ func (v *Target) RmDir(path string) error {
 }
 
 // create a file with name in the given directory specific by the fh with the given mode
-func (v *Target) Create(fh string, name string, mode uint32) ([]byte, error) {
+func (v *Target) Create(fh string, name string, perm os.FileMode) ([]byte, error) {
 	type How struct {
 		// 0 : UNCHECKED (default)
 		// 1 : GUARDED
@@ -306,7 +306,7 @@ func (v *Target) Create(fh string, name string, mode uint32) ([]byte, error) {
 			Attr: Sattr3{
 				Mode: SetMode{
 					Set:  uint32(1),
-					Mode: mode,
+					Mode: uint32(perm.Perm()),
 				},
 			},
 		},

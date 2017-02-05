@@ -51,9 +51,15 @@ func Write(w io.Writer, val interface{}) error {
 			switch t.Elem().Kind() {
 			case reflect.Uint8:
 				buf := field.Bytes()
-
-				binary.Write(w, binary.BigEndian, uint32(len(buf)))
+				l := len(buf)
+				binary.Write(w, binary.BigEndian, uint32(l))
 				w.Write(buf)
+
+				// pad to 32 bits
+				if l%4 > 0 {
+					w.Write(make([]byte, 4-(l%4)))
+				}
+
 			default:
 				panic("slice of unknown type " + t.Elem().Kind().String())
 			}

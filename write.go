@@ -31,46 +31,36 @@ func (wr *FileWriter) Write(p []byte) (int, error) {
 		Contents []byte
 	}
 
-	var byteswritten int
 	totalToWrite := len(p)
+	writeSize := uint64(min(uint64(wr.fsinfo.WTPref), uint64(totalToWrite)))
 
-	// keep calling write in the case our buffer is larger than the page size
-	for {
+	_, err := wr.call(&WriteArgs{
+		Header: rpc.Header{
+			Rpcvers: 2,
+			Prog:    NFS3_PROG,
+			Vers:    NFS3_VERS,
+			Proc:    NFSPROC3_WRITE,
+			Cred:    wr.auth,
+			Verf:    rpc.AUTH_NULL,
+		},
+		FH:       string(wr.fh),
+		Offset:   wr.curr,
+		Count:    uint32(writeSize),
+		How:      2,
+		Contents: p[:writeSize],
+	})
 
-		if byteswritten == totalToWrite {
-			break
-		}
-
-		writeSize := uint64(min(uint64(wr.fsinfo.WTPref), uint64(len(p))))
-		segment := p[byteswritten:writeSize]
-		util.Debugf("write(%x) len %d", wr.fh, writeSize)
-
-		_, err := wr.call(&WriteArgs{
-			Header: rpc.Header{
-				Rpcvers: 2,
-				Prog:    NFS3_PROG,
-				Vers:    NFS3_VERS,
-				Proc:    NFSPROC3_WRITE,
-				Cred:    wr.auth,
-				Verf:    rpc.AUTH_NULL,
-			},
-			FH:       string(wr.fh),
-			Offset:   wr.curr,
-			Count:    uint32(len(segment)),
-			How:      2,
-			Contents: segment,
-		})
-
-		if err != nil {
-			util.Debugf("write(%x): %s", wr.fh, err.Error())
-			return byteswritten, err
-		}
-
-		wr.curr = wr.curr + uint64(len(segment))
-		byteswritten = byteswritten + len(segment)
+	if err != nil {
+		util.Debugf("write(%x): %s", wr.fh, err.Error())
+		return int(writeSize), err
 	}
 
-	return byteswritten, nil
+	util.Debugf("write(%x) len=%d offset=%d written=%d total=%d",
+		wr.fh, writeSize, wr.curr, writeSize, totalToWrite)
+
+	wr.curr = wr.curr + writeSize
+
+	return int(writeSize), nil
 }
 
 func (wr *FileWriter) Close() error {
@@ -102,11 +92,11 @@ func (wr *FileWriter) Close() error {
 }
 
 // Write writes to an existing file at path
-func (v *Target) Write(path string, mode uint32) (io.WriteCloser, error) {
+func (v *Target) Write(path string, perm os.FileMode) (io.WriteCloser, error) {
 	_, fh, err := v.Lookup(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			fh, err = v.Create(string(v.fh), path, mode)
+			fh, err = v.Create(string(v.fh), path, perm)
 			if err != nil {
 				return nil, err
 			}

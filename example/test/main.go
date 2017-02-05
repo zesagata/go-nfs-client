@@ -55,48 +55,15 @@ func main() {
 		log.Fatalf("mkdir expected error")
 	}
 
-	// create a temp file
-	f, err := os.Open("/dev/urandom")
-	if err != nil {
-		log.Fatalf("error openning random: %s", err.Error())
+	// 10 MB file
+	if err = testFileRW(v, "20mb", 10*1024*1024); err != nil {
+		log.Fatalf("fail")
 	}
 
-	wr, err := v.Write("data", 0777)
-	if err != nil {
-		log.Fatalf("write fail: %s", err.Error())
+	// 7b file
+	if err = testFileRW(v, "7mb", 7); err != nil {
+		log.Fatalf("fail")
 	}
-
-	// calculate the sha
-	h := sha256.New()
-	t := io.TeeReader(f, h)
-
-	// Copy 20MB
-	_, err = io.CopyN(wr, t, 20*1024*1024)
-	if err != nil {
-		log.Fatalf("error copying: %s", err.Error())
-	}
-	expectedSum := h.Sum(nil)
-
-	//
-	// get the file we wrote and calc the sum
-	rdr, err := v.Read("data")
-	if err != nil {
-		log.Fatalf("read error: %v", err)
-	}
-
-	h = sha256.New()
-	t = io.TeeReader(rdr, h)
-
-	_, err = ioutil.ReadAll(t)
-	if err != nil {
-		log.Fatalf("readall error: %v", err)
-	}
-	actualSum := h.Sum(nil)
-
-	if bytes.Compare(actualSum, expectedSum) != 0 {
-		log.Fatalf("sums didn't match. actual=%x expected=%s", actualSum, expectedSum) //  Got=0%x expected=0%x", string(buf), testdata)
-	}
-	log.Printf("Sums match %x %x", actualSum, expectedSum)
 
 	_, _, err = v.Lookup(dir)
 	if err != nil {
@@ -121,4 +88,57 @@ func main() {
 		log.Fatalf("unable to umount target: %v", err)
 	}
 	mount.Close()
+}
+
+func testFileRW(v *nfs.Target, name string, filesize uint64) error {
+
+	// create a temp file
+	f, err := os.Open("/dev/urandom")
+	if err != nil {
+		util.Debugf("error openning random: %s", err.Error())
+		return err
+	}
+
+	wr, err := v.Write(name, 0777)
+	if err != nil {
+		util.Debugf("write fail: %s", err.Error())
+		return err
+	}
+
+	// calculate the sha
+	h := sha256.New()
+	t := io.TeeReader(f, h)
+
+	// Copy filesize
+	_, err = io.CopyN(wr, t, int64(filesize))
+	if err != nil {
+		util.Debugf("error copying: %s", err.Error())
+		return err
+	}
+	expectedSum := h.Sum(nil)
+
+	//
+	// get the file we wrote and calc the sum
+	rdr, err := v.Read(name)
+	if err != nil {
+		util.Debugf("read error: %v", err)
+		return err
+	}
+
+	h = sha256.New()
+	t = io.TeeReader(rdr, h)
+
+	_, err = ioutil.ReadAll(t)
+	if err != nil {
+		util.Debugf("readall error: %v", err)
+		return err
+	}
+	actualSum := h.Sum(nil)
+
+	if bytes.Compare(actualSum, expectedSum) != 0 {
+		log.Fatalf("sums didn't match. actual=%x expected=%s", actualSum, expectedSum) //  Got=0%x expected=0%x", string(buf), testdata)
+	}
+
+	log.Printf("Sums match %x %x", actualSum, expectedSum)
+	return nil
 }
