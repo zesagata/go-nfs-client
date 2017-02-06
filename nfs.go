@@ -91,8 +91,9 @@ type EntryPlus struct {
 		Follows uint32
 		Attr    Fattr
 	}
-	FHSet uint32
-	FH    string
+	FHSet        uint32
+	FH           string
+	ValueFollows uint32
 }
 
 type FSInfo struct {

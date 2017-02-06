@@ -25,7 +25,6 @@ func TestRead(t *testing.T) {
 }
 
 func TestByteSlice(t *testing.T) {
-	EncoderDebug = true
 	util.DefaultLogger.SetDebug(true)
 
 	// byte slices have a length field up front, followed by the data.  The

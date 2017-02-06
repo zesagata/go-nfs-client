@@ -66,8 +66,14 @@ func main() {
 		log.Fatalf("mkdir error: %v", err)
 	}
 
-	if err = ls(v); err != nil {
+	dirs, err := ls(v)
+	if err != nil {
 		log.Fatalf("ls: %s", err.Error())
+	}
+
+	// check the length.  There should only be 1 entry in the target (aside from . and ..)
+	if len(dirs) != 3 {
+		log.Fatalf("expected 3 dirs, got %d", len(dirs))
 	}
 
 	// 10 MB file
@@ -93,7 +99,7 @@ func main() {
 		log.Fatalf("lookup error: %s", err.Error())
 	}
 
-	if err = ls(v); err != nil {
+	if _, err = ls(v); err != nil {
 		log.Fatalf("ls: %s", err.Error())
 	}
 
@@ -165,10 +171,10 @@ func testFileRW(v *nfs.Target, name string, filesize uint64) error {
 	return nil
 }
 
-func ls(v *nfs.Target) error {
+func ls(v *nfs.Target) ([]*nfs.EntryPlus, error) {
 	dirs, err := v.ReadDirPlus(".")
 	if err != nil {
-		return fmt.Errorf("readdir error: %s", err.Error())
+		return nil, fmt.Errorf("readdir error: %s", err.Error())
 	}
 
 	util.Infof("dirs:")
@@ -176,5 +182,5 @@ func ls(v *nfs.Target) error {
 		util.Infof("\t%s\t%d:%d\t0%o", dir.FileName, dir.Attr.Attr.UID, dir.Attr.Attr.GID, dir.Attr.Attr.Mode)
 	}
 
-	return nil
+	return dirs, nil
 }

@@ -170,7 +170,7 @@ func (v *Target) lookup(fh []byte, name string) (*Fattr, []byte, error) {
 	return fattrs, fh, nil
 }
 
-func (v *Target) ReadDirPlus(dir string) ([]EntryPlus, error) {
+func (v *Target) ReadDirPlus(dir string) ([]*EntryPlus, error) {
 	_, fh, err := v.Lookup(dir)
 	if err != nil {
 		return nil, err
@@ -190,12 +190,8 @@ func (v *Target) ReadDirPlus(dir string) ([]EntryPlus, error) {
 			Follows  uint32
 			DirAttrs Fattr
 		}
-		CookieVerf  uint64
-		Follows     uint32
-		DirListPlus struct {
-			Entries []EntryPlus
-			EOF     uint32
-		}
+		CookieVerf uint64
+		Follows    uint32
 	}
 
 	buf, err := v.call(&ReadDirPlus3Args{
@@ -217,13 +213,43 @@ func (v *Target) ReadDirPlus(dir string) ([]EntryPlus, error) {
 		return nil, err
 	}
 
+	// The dir list entries are so-called "optional-data".  We need to check
+	// the Follows fields before continuing down the array.  Effectively, it's
+	// an encoding used to flatten a linked list into an array where the
+	// Follows field is set when the next idx has data. See
+	// https://tools.ietf.org/html/rfc4506.html#section-4.19 for details.
 	r := bytes.NewBuffer(buf)
-	dirlist := &DirListOK{}
-	if err = xdr.Read(r, dirlist); err != nil {
+	dirlistOK := &DirListOK{}
+	if err = xdr.Read(r, dirlistOK); err != nil {
 		return nil, err
 	}
 
-	return dirlist.DirListPlus.Entries, nil
+	if dirlistOK.Follows == 0 {
+		return nil, nil
+	}
+
+	var entries []*EntryPlus
+	for {
+		var entry EntryPlus
+
+		if err = xdr.Read(r, &entry); err != nil {
+			return nil, err
+		}
+
+		entries = append(entries, &entry)
+
+		if entry.ValueFollows == 0 {
+			break
+		}
+	}
+
+	// The last byte is EOF
+	var eof uint32
+	if err = xdr.Read(r, &eof); err != nil {
+		util.Debugf("ReadDirPlus(%s): expected EOF", dir)
+	}
+
+	return entries, nil
 }
 
 // Creates a directory of the given name and returns its handle
