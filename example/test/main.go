@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -65,13 +66,13 @@ func main() {
 		log.Fatalf("mkdir error: %v", err)
 	}
 
+	if err = ls(v); err != nil {
+		log.Fatalf("ls: %s", err.Error())
+	}
+
 	// 10 MB file
 	if err = testFileRW(v, "20mb", 10*1024*1024); err != nil {
 		log.Fatalf("fail")
-	}
-
-	if err = v.Remove("20mb"); err != nil {
-		log.Fatalf("rm(20mb) err: %s", err.Error())
 	}
 
 	// 7b file
@@ -83,19 +84,17 @@ func main() {
 		log.Fatalf("rm(7b) err: %s", err.Error())
 	}
 
+	if err = v.Remove("20mb"); err != nil {
+		log.Fatalf("rm(20mb) err: %s", err.Error())
+	}
+
 	_, _, err = v.Lookup(dir)
 	if err != nil {
 		log.Fatalf("lookup error: %s", err.Error())
 	}
 
-	dirs, err := v.ReadDirPlus(dir)
-	if err != nil {
-		log.Fatalf("readdir error: %s", err.Error())
-	}
-
-	util.Infof("dirs:")
-	for _, dir := range dirs {
-		util.Infof("\t%s\t%d:%d\t0%o", dir.FileName, dir.Attr.Attr.UID, dir.Attr.Attr.GID, dir.Attr.Attr.Mode)
+	if err = ls(v); err != nil {
+		log.Fatalf("ls: %s", err.Error())
 	}
 
 	if err = v.RmDir(dir); err != nil {
@@ -163,5 +162,19 @@ func testFileRW(v *nfs.Target, name string, filesize uint64) error {
 	}
 
 	log.Printf("Sums match %x %x", actualSum, expectedSum)
+	return nil
+}
+
+func ls(v *nfs.Target) error {
+	dirs, err := v.ReadDirPlus(".")
+	if err != nil {
+		return fmt.Errorf("readdir error: %s", err.Error())
+	}
+
+	util.Infof("dirs:")
+	for _, dir := range dirs {
+		util.Infof("\t%s\t%d:%d\t0%o", dir.FileName, dir.Attr.Attr.UID, dir.Attr.Attr.GID, dir.Attr.Attr.Mode)
+	}
+
 	return nil
 }

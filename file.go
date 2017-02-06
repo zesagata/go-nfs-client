@@ -118,7 +118,7 @@ func (f *File) Write(p []byte) (int, error) {
 		return int(writeSize), err
 	}
 
-	util.Debugf("write(%x) len=%d offset=%d fitten=%d total=%d",
+	util.Debugf("write(%x) len=%d offset=%d written=%d total=%d",
 		f.fh, writeSize, f.curr, writeSize, totalToWrite)
 
 	f.curr = f.curr + writeSize
