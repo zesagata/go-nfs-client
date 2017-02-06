@@ -82,22 +82,6 @@ func (f *File) Read(p []byte) (int, error) {
 	return n, err
 }
 
-// Open opens a file for reading
-func (v *Target) Open(path string) (io.Reader, error) {
-	_, fh, err := v.Lookup(path)
-	if err != nil {
-		return nil, err
-	}
-
-	f := &File{
-		Target: v,
-		fsinfo: v.fsinfo,
-		fh:     fh,
-	}
-
-	return f, nil
-}
-
 func (f *File) Write(p []byte) (int, error) {
 	type WriteArgs struct {
 		rpc.Header
@@ -171,7 +155,7 @@ func (f *File) Close() error {
 }
 
 // OpenFile writes to an existing file or creates one
-func (v *Target) OpenFile(path string, perm os.FileMode) (io.WriteCloser, error) {
+func (v *Target) OpenFile(path string, perm os.FileMode) (*File, error) {
 	_, fh, err := v.Lookup(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -182,6 +166,22 @@ func (v *Target) OpenFile(path string, perm os.FileMode) (io.WriteCloser, error)
 		} else {
 			return nil, err
 		}
+	}
+
+	f := &File{
+		Target: v,
+		fsinfo: v.fsinfo,
+		fh:     fh,
+	}
+
+	return f, nil
+}
+
+// Open opens a file for reading
+func (v *Target) Open(path string) (*File, error) {
+	_, fh, err := v.Lookup(path)
+	if err != nil {
+		return nil, err
 	}
 
 	f := &File{
