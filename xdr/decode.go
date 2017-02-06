@@ -133,6 +133,10 @@ func read(r io.Reader, v reflect.Value) error {
 				_, _ = r.Read(fillBytes)
 			}
 
+			if v.Cap() < int(l) {
+				v.Set(reflect.MakeSlice(v.Type(), int(l), int(l)))
+			}
+
 			v.SetBytes(b)
 
 		case reflect.Struct:
