@@ -117,7 +117,7 @@ func testFileRW(v *nfs.Target, name string, filesize uint64) error {
 		return err
 	}
 
-	wr, err := v.Write(name, 0777)
+	wr, err := v.OpenFile(name, 0777)
 	if err != nil {
 		util.Errorf("write fail: %s", err.Error())
 		return err
@@ -142,7 +142,7 @@ func testFileRW(v *nfs.Target, name string, filesize uint64) error {
 
 	//
 	// get the file we wrote and calc the sum
-	rdr, err := v.Read(name)
+	rdr, err := v.Open(name)
 	if err != nil {
 		util.Errorf("read error: %v", err)
 		return err
