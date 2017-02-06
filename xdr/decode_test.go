@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/davecheney/nfs/util"
+	"github.com/fdawg4l/nfs/util"
 )
 
 func TestRead(t *testing.T) {

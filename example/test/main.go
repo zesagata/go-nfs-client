@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davecheney/nfs"
-	"github.com/davecheney/nfs/rpc"
-	"github.com/davecheney/nfs/util"
+	"github.com/fdawg4l/nfs"
+	"github.com/fdawg4l/nfs/rpc"
+	"github.com/fdawg4l/nfs/util"
 )
 
 func main() {

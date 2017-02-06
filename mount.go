@@ -6,8 +6,8 @@ package nfs
 import (
 	"fmt"
 
-	"github.com/davecheney/nfs/rpc"
-	"github.com/davecheney/nfs/xdr"
+	"github.com/fdawg4l/nfs/rpc"
+	"github.com/fdawg4l/nfs/xdr"
 )
 
 const (

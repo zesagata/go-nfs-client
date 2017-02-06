@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/davecheney/nfs/rpc"
-	"github.com/davecheney/nfs/util"
-	"github.com/davecheney/nfs/xdr"
+	"github.com/fdawg4l/nfs/rpc"
+	"github.com/fdawg4l/nfs/util"
+	"github.com/fdawg4l/nfs/xdr"
 )
 
 type Target struct {

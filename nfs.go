@@ -7,8 +7,8 @@ import (
 	"os/user"
 	"time"
 
-	"github.com/davecheney/nfs/rpc"
-	"github.com/davecheney/nfs/util"
+	"github.com/fdawg4l/nfs/rpc"
+	"github.com/fdawg4l/nfs/util"
 )
 
 // NFS version 3

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/davecheney/nfs"
-	"github.com/davecheney/nfs/rpc"
+	"github.com/fdawg4l/nfs"
+	"github.com/fdawg4l/nfs/rpc"
 )
 
 func main() {

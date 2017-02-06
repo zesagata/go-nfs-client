@@ -1,7 +1,7 @@
 package nfs
 
 import (
-	"github.com/davecheney/nfs/rpc"
+	"github.com/fdawg4l/nfs/rpc"
 )
 
 type Client struct {
