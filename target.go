@@ -466,22 +466,33 @@ func (v *Target) RemoveAll(path string) error {
 		return nil
 	}
 
+	// Collect the not a dir error.
 	if IsNotDirError(err) {
 		return err
 	}
-
-	return v.removeAll(parentDirfh, deleteDir)
-}
-
-// removeAll removes the deleteDir from the parentDir recursively
-func (v *Target) removeAll(parentDirfh []byte, deleteDir string) error {
 
 	_, deleteDirfh, err := v.lookup(parentDirfh, deleteDir)
 	if err != nil {
 		return err
 	}
 
-	// BFS the dir tree.  If dir, recurse, then delete the dir and all files.
+	if err = v.removeAll(deleteDirfh); err != nil {
+		return err
+	}
+
+	// Delete the directory we started at.
+	if err = v.rmDir(parentDirfh, deleteDir); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// removeAll removes the deleteDir recursively
+func (v *Target) removeAll(deleteDirfh []byte) error {
+
+	// BFS the dir tree recursively.  If dir, recurse, then delete the dir and
+	// all files.
 
 	// This is a directory, get all of its Entries
 	entries, err := v.readDirPlus(deleteDirfh)
@@ -490,19 +501,22 @@ func (v *Target) removeAll(parentDirfh []byte, deleteDir string) error {
 	}
 
 	for _, entry := range entries {
-
 		// skip "." and ".."
 		if entry.FileName == "." || entry.FileName == ".." {
 			continue
 		}
 
+		// If directory, recurse, then nuke it.  It should be empty when we get
+		// back.
 		if entry.Attr.Attr.Type == NF3DIR {
-			if err = v.removeAll(deleteDirfh, entry.FileName); err != nil {
+			if err = v.removeAll(entry.FH); err != nil {
 				return err
 			}
 
 			err = v.rmDir(deleteDirfh, entry.FileName)
 		} else {
+
+			// nuke all files
 			err = v.remove(deleteDirfh, entry.FileName)
 		}
 
