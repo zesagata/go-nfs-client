@@ -123,7 +123,7 @@ func main() {
 		}
 	}
 
-	if err = v.RemoveAll("."); err != nil {
+	if err = v.RemoveAll(dir); err != nil {
 		log.Fatalf("error removing files: %s", err.Error())
 	}
 

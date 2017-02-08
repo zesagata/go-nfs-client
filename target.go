@@ -121,7 +121,7 @@ func (v *Target) Lookup(p string) (*Fattr, []byte, error) {
 			return nil, nil, err
 		}
 
-		util.Debugf("%s -> 0x%x", dirent, fh)
+		//	util.Debugf("%s -> 0x%x", dirent, fh)
 	}
 
 	return fattr, fh, nil
@@ -461,7 +461,8 @@ func (v *Target) RemoveAll(path string) error {
 
 	// Easy path.  This is a directory and it's empty.  If not a dir or not an
 	// empty dir, this will throw an error.
-	if err = v.rmDir(parentDirfh, deleteDir); err == nil || os.IsNotExist(err) {
+	err = v.rmDir(parentDirfh, deleteDir)
+	if err == nil || os.IsNotExist(err) {
 		return nil
 	}
 
@@ -469,68 +470,47 @@ func (v *Target) RemoveAll(path string) error {
 		return err
 	}
 
-	_, deleteDirfh, derr := v.lookup(parentDirfh, deleteDir)
-	if derr != nil {
-		return derr
+	return v.removeAll(parentDirfh, deleteDir)
+}
+
+// removeAll removes the deleteDir from the parentDir recursively
+func (v *Target) removeAll(parentDirfh []byte, deleteDir string) error {
+
+	_, deleteDirfh, err := v.lookup(parentDirfh, deleteDir)
+	if err != nil {
+		return err
 	}
 
-	// BFS the dir tree.  List all elements in the directory, add any
-	// directories to directories, and delete all the files, iterate.
+	// BFS the dir tree.  If dir, recurse, then delete the dir and all files.
 
-	var (
-		directories [][]byte
-		curr        []byte = deleteDirfh
-	)
+	// This is a directory, get all of its Entries
+	entries, err := v.readDirPlus(deleteDirfh)
+	if err != nil {
+		return err
+	}
 
-	directories = append(directories, deleteDirfh)
+	for _, entry := range entries {
 
-	for {
-
-		// This is a directory, get all of its Entries
-		entries, err := v.readDirPlus(curr)
-		if err != nil {
-			return err
+		// skip "." and ".."
+		if entry.FileName == "." || entry.FileName == ".." {
+			continue
 		}
 
-		// Remove all of the files
-		for _, entry := range entries {
-
-			// skip "." and ".."
-			if entry.FileName == "." || entry.FileName == ".." {
-				continue
-			}
-
-			// whatever it is, try to nuke it.  if it succeeds, continue.
-			if entry.Attr.Attr.Type == NF3DIR {
-				err = v.rmDir(curr, entry.FileName)
-			} else {
-				err = v.remove(curr, entry.FileName)
-			}
-
-			if err == nil {
-				continue
-			}
-
-			// we can only tolerate directory not empty errors.
-			if !IsNotEmptyError(err) {
-				util.Errorf("%s %s", entry.FileName, err.Error())
+		if entry.Attr.Attr.Type == NF3DIR {
+			if err = v.removeAll(deleteDirfh, entry.FileName); err != nil {
 				return err
 			}
 
-			// if this is a directory, add it to our list
-			if entry.Attr.Attr.Type == NF3DIR {
-				directories = append(directories, entry.FH)
-			}
-
+			err = v.rmDir(deleteDirfh, entry.FileName)
+		} else {
+			err = v.remove(deleteDirfh, entry.FileName)
 		}
 
-		if len(directories) == 0 {
-			break
+		if err != nil {
+			util.Errorf("%s %s", entry.FileName, err.Error())
+			return err
 		}
-
-		curr = directories[0]
-		directories = directories[1:]
 	}
 
-	return err
+	return nil
 }
