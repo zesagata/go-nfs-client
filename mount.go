@@ -59,8 +59,11 @@ func (m *Mount) Unmount() error {
 			Prog:    MOUNT_PROG,
 			Vers:    MOUNT_VERS,
 			Proc:    MOUNTPROC3_UMNT,
-			Cred:    m.auth,
-			Verf:    rpc.AUTH_NULL,
+			// Weirdly, the spec calls for AUTH_UNIX or better, but AUTH_NULL
+			// works here on a linux NFS kernel server.  Follow the spec
+			// anyway.
+			Cred: m.auth,
+			Verf: rpc.AUTH_NULL,
 		},
 		m.dirPath,
 	})
