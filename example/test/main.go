@@ -100,8 +100,8 @@ func main() {
 		log.Fatalf("rm(7b) err: %s", err.Error())
 	}
 
-	if err = v.Remove("20mb"); err != nil {
-		log.Fatalf("rm(20mb) err: %s", err.Error())
+	if err = v.Remove("10mb"); err != nil {
+		log.Fatalf("rm(10mb) err: %s", err.Error())
 	}
 
 	_, _, err = v.Lookup(dir)

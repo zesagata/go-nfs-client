@@ -42,6 +42,7 @@ type Group struct {
 
 type Mount struct {
 	*rpc.Client
+	auth    rpc.Auth
 	dirPath string
 	Addr    string
 }
@@ -49,7 +50,7 @@ type Mount struct {
 func (m *Mount) Unmount() error {
 	type umount struct {
 		rpc.Header
-		dirpath string
+		Dirpath string
 	}
 
 	_, err := m.Call(&umount{
@@ -58,7 +59,7 @@ func (m *Mount) Unmount() error {
 			Prog:    MOUNT_PROG,
 			Vers:    MOUNT_VERS,
 			Proc:    MOUNTPROC3_UMNT,
-			Cred:    rpc.AUTH_NULL,
+			Cred:    m.auth,
 			Verf:    rpc.AUTH_NULL,
 		},
 		m.dirPath,
@@ -98,6 +99,7 @@ func (m *Mount) Mount(dirpath string, auth rpc.Auth) (*Target, error) {
 		_, buf = xdr.Uint32List(buf)
 
 		m.dirPath = dirpath
+		m.auth = auth
 
 		vol, err := NewTarget("tcp", m.Addr, auth, fh, dirpath)
 		if err != nil {
