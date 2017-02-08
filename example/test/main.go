@@ -7,10 +7,8 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/fdawg4l/nfs"
 	"github.com/fdawg4l/nfs/rpc"
@@ -19,6 +17,10 @@ import (
 
 func main() {
 	util.DefaultLogger.SetDebug(true)
+	if len(os.Args) != 3 {
+		util.Infof("%s <host>:<target path> <test directory to be created>", os.Args[0])
+		os.Exit(-1)
+	}
 
 	b := strings.Split(os.Args[1], ":")
 
@@ -34,13 +36,7 @@ func main() {
 	}
 	defer mount.Close()
 
-	auth := &rpc.AUTH_UNIX{
-		Stamp:       rand.New(rand.NewSource(time.Now().UnixNano())).Uint32(),
-		Machinename: "hasselhoff",
-		Uid:         1001,
-		Gid:         1001,
-		GidLen:      1,
-	}
+	auth := rpc.NewAuthUnix("hasselhoff", 1001, 1001)
 
 	v, err := mount.Mount(target, auth.Auth())
 	if err != nil {

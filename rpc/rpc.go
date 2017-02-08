@@ -3,6 +3,8 @@ package rpc
 import (
 	"bytes"
 	"io"
+	"math/rand"
+	"time"
 
 	"github.com/fdawg4l/nfs/xdr"
 )
@@ -59,5 +61,15 @@ func (a AUTH_UNIX) Auth() Auth {
 	return Auth{
 		1,
 		w.Bytes(),
+	}
+}
+
+func NewAuthUnix(machinename string, uid, gid uint32) *AUTH_UNIX {
+	return &AUTH_UNIX{
+		Stamp:       rand.New(rand.NewSource(time.Now().UnixNano())).Uint32(),
+		Machinename: machinename,
+		Uid:         uid,
+		Gid:         gid,
+		GidLen:      1,
 	}
 }
