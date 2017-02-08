@@ -176,6 +176,10 @@ func (v *Target) ReadDirPlus(dir string) ([]*EntryPlus, error) {
 		return nil, err
 	}
 
+	return v.readDirPlus(fh)
+}
+
+func (v *Target) readDirPlus(fh []byte) ([]*EntryPlus, error) {
 	type ReadDirPlus3Args struct {
 		rpc.Header
 		FH         []byte
@@ -246,7 +250,7 @@ func (v *Target) ReadDirPlus(dir string) ([]*EntryPlus, error) {
 	// The last byte is EOF
 	var eof uint32
 	if err = xdr.Read(r, &eof); err != nil {
-		util.Debugf("ReadDirPlus(%s): expected EOF", dir)
+		util.Debugf("ReadDirPlus(0x%x): expected EOF", fh)
 	}
 
 	return entries, nil
@@ -301,42 +305,7 @@ func (v *Target) Mkdir(path string, perm os.FileMode) ([]byte, error) {
 	return fh, nil
 }
 
-func (v *Target) RmDir(path string) error {
-	dir, newDir := filepath.Split(path)
-	_, fh, err := v.Lookup(dir)
-	if err != nil {
-		return err
-	}
-	type RmDir3Args struct {
-		rpc.Header
-		Object Diropargs3
-	}
-
-	_, err = v.call(&RmDir3Args{
-		Header: rpc.Header{
-			Rpcvers: 2,
-			Prog:    NFS3_PROG,
-			Vers:    NFS3_VERS,
-			Proc:    NFSPROC3_RMDIR,
-			Cred:    v.auth,
-			Verf:    rpc.AUTH_NULL,
-		},
-		Object: Diropargs3{
-			FH:       fh,
-			Filename: newDir,
-		},
-	})
-
-	if err != nil {
-		util.Debugf("rmdir(%s): %s", path, err.Error())
-		return err
-	}
-
-	util.Debugf("rmdir(%s): deleted successfully", path)
-	return nil
-}
-
-// create a file with name the given mode
+// Create a file with name the given mode
 func (v *Target) Create(path string, perm os.FileMode) ([]byte, error) {
 	dir, newFile := filepath.Split(path)
 	_, fh, err := v.Lookup(dir)
@@ -402,17 +371,23 @@ func (v *Target) Create(path string, perm os.FileMode) ([]byte, error) {
 
 // Remove a file
 func (v *Target) Remove(path string) error {
-	dir, deleteFile := filepath.Split(path)
-	_, fh, err := v.Lookup(dir)
+	parentDir, deleteFile := filepath.Split(path)
+	_, fh, err := v.Lookup(parentDir)
 	if err != nil {
 		return err
 	}
+
+	return v.remove(fh, deleteFile)
+}
+
+// remove the named file from the parent (fh)
+func (v *Target) remove(fh []byte, deleteFile string) error {
 	type RemoveArgs struct {
 		rpc.Header
 		Object Diropargs3
 	}
 
-	_, err = v.call(&RemoveArgs{
+	_, err := v.call(&RemoveArgs{
 		Header: rpc.Header{
 			Rpcvers: 2,
 			Prog:    NFS3_PROG,
@@ -433,4 +408,129 @@ func (v *Target) Remove(path string) error {
 	}
 
 	return nil
+}
+
+// RmDir removes a non-empty directory
+func (v *Target) RmDir(path string) error {
+	dir, deletedir := filepath.Split(path)
+	_, fh, err := v.Lookup(dir)
+	if err != nil {
+		return err
+	}
+
+	return v.rmDir(fh, deletedir)
+}
+
+// delete the named directory from the parent directory (fh)
+func (v *Target) rmDir(fh []byte, name string) error {
+	type RmDir3Args struct {
+		rpc.Header
+		Object Diropargs3
+	}
+
+	_, err := v.call(&RmDir3Args{
+		Header: rpc.Header{
+			Rpcvers: 2,
+			Prog:    NFS3_PROG,
+			Vers:    NFS3_VERS,
+			Proc:    NFSPROC3_RMDIR,
+			Cred:    v.auth,
+			Verf:    rpc.AUTH_NULL,
+		},
+		Object: Diropargs3{
+			FH:       fh,
+			Filename: name,
+		},
+	})
+
+	if err != nil {
+		util.Debugf("rmdir(%s): %s", name, err.Error())
+		return err
+	}
+
+	util.Debugf("rmdir(%s): deleted successfully", name)
+	return nil
+}
+
+func (v *Target) RemoveAll(path string) error {
+	parentDir, deleteDir := filepath.Split(path)
+	_, parentDirfh, err := v.Lookup(parentDir)
+	if err != nil {
+		return err
+	}
+
+	// Easy path.  This is a directory and it's empty.  If not a dir or not an
+	// empty dir, this will throw an error.
+	if err = v.rmDir(parentDirfh, deleteDir); err == nil || os.IsNotExist(err) {
+		return nil
+	}
+
+	if IsNotDirError(err) {
+		return err
+	}
+
+	_, deleteDirfh, derr := v.lookup(parentDirfh, deleteDir)
+	if derr != nil {
+		return derr
+	}
+
+	// BFS the dir tree.  List all elements in the directory, add any
+	// directories to directories, and delete all the files, iterate.
+
+	var (
+		directories [][]byte
+		curr        []byte = deleteDirfh
+	)
+
+	directories = append(directories, deleteDirfh)
+
+	for {
+
+		// This is a directory, get all of its Entries
+		entries, err := v.readDirPlus(curr)
+		if err != nil {
+			return err
+		}
+
+		// Remove all of the files
+		for _, entry := range entries {
+
+			// skip "." and ".."
+			if entry.FileName == "." || entry.FileName == ".." {
+				continue
+			}
+
+			// whatever it is, try to nuke it.  if it succeeds, continue.
+			if entry.Attr.Attr.Type == NF3DIR {
+				err = v.rmDir(curr, entry.FileName)
+			} else {
+				err = v.remove(curr, entry.FileName)
+			}
+
+			if err == nil {
+				continue
+			}
+
+			// we can only tolerate directory not empty errors.
+			if !IsNotEmptyError(err) {
+				util.Errorf("%s %s", entry.FileName, err.Error())
+				return err
+			}
+
+			// if this is a directory, add it to our list
+			if entry.Attr.Attr.Type == NF3DIR {
+				directories = append(directories, entry.FH)
+			}
+
+		}
+
+		if len(directories) == 0 {
+			break
+		}
+
+		curr = directories[0]
+		directories = directories[1:]
+	}
+
+	return err
 }

@@ -107,17 +107,17 @@ func (m *Mount) Mount(dirpath string, auth rpc.Auth) (*Target, error) {
 		return vol, nil
 
 	case MNT3ERR_PERM:
-		return nil, &Error{"MNT3ERR_PERM"}
+		return nil, &Error{1, "MNT3ERR_PERM"}
 	case MNT3ERR_NOENT:
-		return nil, &Error{"MNT3ERR_NOENT"}
+		return nil, &Error{2, "MNT3ERR_NOENT"}
 	case MNT3ERR_IO:
-		return nil, &Error{"MNT3ERR_IO"}
+		return nil, &Error{5, "MNT3ERR_IO"}
 	case MNT3ERR_ACCES:
-		return nil, &Error{"MNT3ERR_ACCES"}
+		return nil, &Error{13, "MNT3ERR_ACCES"}
 	case MNT3ERR_NOTDIR:
-		return nil, &Error{"MNT3ERR_NOTDIR"}
+		return nil, &Error{20, "MNT3ERR_NOTDIR"}
 	case MNT3ERR_NAMETOOLONG:
-		return nil, &Error{"MNT3ERR_NAMETOOLONG"}
+		return nil, &Error{63, "MNT3ERR_NAMETOOLONG"}
 	}
 	return nil, fmt.Errorf("unknown mount stat: %d", mountstat3)
 }

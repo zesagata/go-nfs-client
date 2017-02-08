@@ -66,7 +66,7 @@ func main() {
 		log.Fatalf("mkdir error: %v", err)
 	}
 
-	dirs, err := ls(v)
+	dirs, err := ls(v, ".")
 	if err != nil {
 		log.Fatalf("ls: %s", err.Error())
 	}
@@ -86,6 +86,16 @@ func main() {
 		log.Fatalf("fail")
 	}
 
+	// should return an error
+	if err = v.RemoveAll("7b"); err == nil {
+		log.Fatalf("expected a NOTADIR error")
+	} else {
+		nfserr := err.(*nfs.Error)
+		if nfserr.ErrorNum != nfs.NFS3ERR_NOTDIR {
+			log.Fatalf("Wrong error")
+		}
+	}
+
 	if err = v.Remove("7b"); err != nil {
 		log.Fatalf("rm(7b) err: %s", err.Error())
 	}
@@ -99,17 +109,28 @@ func main() {
 		log.Fatalf("lookup error: %s", err.Error())
 	}
 
-	if _, err = ls(v); err != nil {
+	if _, err = ls(v, "."); err != nil {
 		log.Fatalf("ls: %s", err.Error())
 	}
 
-	if err = v.RmDir(dir); err != nil {
-		log.Fatalf("rmdir error: %v", err)
+	if err = v.RmDir(dir); err == nil {
+		log.Fatalf("expected not empty error")
+	}
+
+	for _, fname := range []string{"/one", "/two", "/a/one", "/a/two", "/a/b/one", "/a/b/two"} {
+		if err = testFileRW(v, dir+fname, 10); err != nil {
+			log.Fatalf("fail")
+		}
+	}
+
+	if err = v.RemoveAll("."); err != nil {
+		log.Fatalf("error removing files: %s", err.Error())
 	}
 
 	if err = mount.Unmount(); err != nil {
 		log.Fatalf("unable to umount target: %v", err)
 	}
+
 	mount.Close()
 }
 
@@ -171,8 +192,8 @@ func testFileRW(v *nfs.Target, name string, filesize uint64) error {
 	return nil
 }
 
-func ls(v *nfs.Target) ([]*nfs.EntryPlus, error) {
-	dirs, err := v.ReadDirPlus(".")
+func ls(v *nfs.Target, path string) ([]*nfs.EntryPlus, error) {
+	dirs, err := v.ReadDirPlus(path)
 	if err != nil {
 		return nil, fmt.Errorf("readdir error: %s", err.Error())
 	}

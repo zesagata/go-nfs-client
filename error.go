@@ -76,7 +76,10 @@ func NFS3Error(errnum uint32) error {
 		return os.ErrNotExist
 	default:
 		if errStr, ok := errToName[errnum]; ok {
-			return &Error{errStr}
+			return &Error{
+				ErrorNum:    errnum,
+				ErrorString: errStr,
+			}
 		}
 
 		return os.ErrInvalid
@@ -87,7 +90,34 @@ func NFS3Error(errnum uint32) error {
 
 // Error represents an unexpected I/O behavior.
 type Error struct {
+	ErrorNum    uint32
 	ErrorString string
 }
 
 func (err *Error) Error() string { return err.ErrorString }
+
+func IsNotEmptyError(err error) bool {
+	nfsErr, ok := err.(*Error)
+	if !ok {
+		return false
+	}
+
+	if nfsErr.ErrorNum == NFS3ERR_NOTEMPTY {
+		return true
+	}
+
+	return false
+}
+
+func IsNotDirError(err error) bool {
+	nfsErr, ok := err.(*Error)
+	if !ok {
+		return false
+	}
+
+	if nfsErr.ErrorNum == NFS3ERR_NOTDIR {
+		return true
+	}
+
+	return false
+}

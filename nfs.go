@@ -92,7 +92,7 @@ type EntryPlus struct {
 		Attr    Fattr
 	}
 	FHSet        uint32
-	FH           string
+	FH           []byte
 	ValueFollows uint32
 }
 
