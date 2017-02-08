@@ -521,7 +521,7 @@ func (v *Target) removeAll(deleteDirfh []byte) error {
 		}
 
 		if err != nil {
-			util.Errorf("%s %s", entry.FileName, err.Error())
+			util.Errorf("error deleting %s: %s", entry.FileName, err.Error())
 			return err
 		}
 	}

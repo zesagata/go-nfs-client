@@ -77,7 +77,7 @@ func main() {
 	}
 
 	// 10 MB file
-	if err = testFileRW(v, "20mb", 10*1024*1024); err != nil {
+	if err = testFileRW(v, "10mb", 10*1024*1024); err != nil {
 		log.Fatalf("fail")
 	}
 
@@ -125,6 +125,15 @@ func main() {
 
 	if err = v.RemoveAll(dir); err != nil {
 		log.Fatalf("error removing files: %s", err.Error())
+	}
+
+	outDirs, err := ls(v, ".")
+	if err != nil {
+		log.Fatalf("ls: %s", err.Error())
+	}
+
+	if len(outDirs) != 2 {
+		log.Fatalf("directory shoudl be empty!")
 	}
 
 	if err = mount.Unmount(); err != nil {
