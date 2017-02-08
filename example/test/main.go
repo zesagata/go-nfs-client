@@ -28,7 +28,7 @@ func main() {
 
 	util.Infof("host=%s target=%s dir=%s\n", host, target, dir)
 
-	mount, err := nfs.DialMount("tcp", host)
+	mount, err := nfs.DialMount(host)
 	if err != nil {
 		log.Fatalf("unable to dial MOUNT service: %v", err)
 	}

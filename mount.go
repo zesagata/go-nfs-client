@@ -4,6 +4,7 @@ package nfs
 // RFC 1813 Section 5.0
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/fdawg4l/nfs/rpc"
@@ -104,7 +105,7 @@ func (m *Mount) Mount(dirpath string, auth rpc.Auth) (*Target, error) {
 		m.dirPath = dirpath
 		m.auth = auth
 
-		vol, err := NewTarget("tcp", m.Addr, auth, fh, dirpath)
+		vol, err := NewTarget(m.Addr, auth, fh, dirpath)
 		if err != nil {
 			return nil, err
 		}
@@ -112,44 +113,22 @@ func (m *Mount) Mount(dirpath string, auth rpc.Auth) (*Target, error) {
 		return vol, nil
 
 	case MNT3ERR_PERM:
-		return nil, &Error{1, "MNT3ERR_PERM"}
+		return nil, errors.New("MNT3ERR_PERM")
 	case MNT3ERR_NOENT:
-		return nil, &Error{2, "MNT3ERR_NOENT"}
+		return nil, errors.New("MNT3ERR_NOENT")
 	case MNT3ERR_IO:
-		return nil, &Error{5, "MNT3ERR_IO"}
+		return nil, errors.New("MNT3ERR_IO")
 	case MNT3ERR_ACCES:
-		return nil, &Error{13, "MNT3ERR_ACCES"}
+		return nil, errors.New("MNT3ERR_ACCES")
 	case MNT3ERR_NOTDIR:
-		return nil, &Error{20, "MNT3ERR_NOTDIR"}
+		return nil, errors.New("MNT3ERR_NOTDIR")
 	case MNT3ERR_NAMETOOLONG:
-		return nil, &Error{63, "MNT3ERR_NAMETOOLONG"}
+		return nil, errors.New("MNT3ERR_NAMETOOLONG")
 	}
 	return nil, fmt.Errorf("unknown mount stat: %d", mountstat3)
 }
 
-// TODO(dfc) unfinished
-func (m *Mount) Exports() ([]Export, error) {
-	type export struct {
-		rpc.Header
-	}
-	msg := &export{
-		rpc.Header{
-			Rpcvers: 2,
-			Prog:    MOUNT_PROG,
-			Vers:    MOUNT_VERS,
-			Proc:    MOUNTPROC3_EXPORT,
-			Cred:    rpc.AUTH_NULL,
-			Verf:    rpc.AUTH_NULL,
-		},
-	}
-	_, err := m.Call(msg)
-	if err != nil {
-		return nil, err
-	}
-	return nil, nil
-}
-
-func DialMount(nt, addr string) (*Mount, error) {
+func DialMount(addr string) (*Mount, error) {
 	// get MOUNT port
 	m := rpc.Mapping{
 		Prog: MOUNT_PROG,
@@ -158,7 +137,7 @@ func DialMount(nt, addr string) (*Mount, error) {
 		Port: 0,
 	}
 
-	client, err := DialService(nt, addr, m)
+	client, err := DialService(addr, m)
 	if err != nil {
 		return nil, err
 	}

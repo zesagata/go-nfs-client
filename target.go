@@ -21,7 +21,7 @@ type Target struct {
 	fsinfo  *FSInfo
 }
 
-func NewTarget(nt, addr string, auth rpc.Auth, fh []byte, dirpath string) (*Target, error) {
+func NewTarget(addr string, auth rpc.Auth, fh []byte, dirpath string) (*Target, error) {
 	m := rpc.Mapping{
 		Prog: NFS3_PROG,
 		Vers: NFS3_VERS,
@@ -29,7 +29,7 @@ func NewTarget(nt, addr string, auth rpc.Auth, fh []byte, dirpath string) (*Targ
 		Port: 0,
 	}
 
-	client, err := DialService(nt, addr, m)
+	client, err := DialService(addr, m)
 	if err != nil {
 		return nil, err
 	}

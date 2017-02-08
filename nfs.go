@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"os"
 	"os/user"
+	"syscall"
 	"time"
 
 	"github.com/fdawg4l/nfs/rpc"
@@ -111,8 +113,8 @@ type FSInfo struct {
 }
 
 // Dial an RPC svc after getting the port from the portmapper
-func DialService(nt, addr string, prog rpc.Mapping) (*rpc.Client, error) {
-	pm, err := rpc.DialPortmapper(nt, addr)
+func DialService(addr string, prog rpc.Mapping) (*rpc.Client, error) {
+	pm, err := rpc.DialPortmapper("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +125,17 @@ func DialService(nt, addr string, prog rpc.Mapping) (*rpc.Client, error) {
 		return nil, err
 	}
 
-	var ldr *net.TCPAddr
+	client, err := dialService(addr, port)
+
+	return client, nil
+}
+
+func dialService(addr string, port int) (*rpc.Client, error) {
+	var (
+		ldr    *net.TCPAddr
+		client *rpc.Client
+	)
+
 	usr, err := user.Current()
 
 	// Unless explicitly configured, the target will likely reject connections
@@ -132,19 +144,46 @@ func DialService(nt, addr string, prog rpc.Mapping) (*rpc.Client, error) {
 		r1 := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 		var p int
-		for p = r1.Intn(1024); p < 0; {
+		for {
+			p = r1.Intn(1024)
+			if p < 0 {
+				continue
+			}
+
+			ldr = &net.TCPAddr{
+				Port: p,
+			}
+
+			client, err = rpc.DialTCP("tcp", ldr, fmt.Sprintf("%s:%d", addr, port))
+			if err == nil {
+				break
+			}
+			// bind error, try again
+			if isAddrInUse(err) {
+				continue
+			}
+
+			return nil, err
 		}
 
 		util.Debugf("using random port %d -> %d", p, port)
-		ldr = &net.TCPAddr{
-			Port: p,
+	} else {
+
+		client, err = rpc.DialTCP("tcp", ldr, fmt.Sprintf("%s:%d", addr, port))
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	client, err := rpc.DialTCP(nt, ldr, fmt.Sprintf("%s:%d", addr, port))
-	if err != nil {
-		return nil, err
+	return client, nil
+}
+
+func isAddrInUse(err error) bool {
+	if er, ok := (err.(*net.OpError)); ok {
+		if syser, ok := er.Err.(*os.SyscallError); ok {
+			return syser.Err == syscall.EADDRINUSE
+		}
 	}
 
-	return client, nil
+	return false
 }
