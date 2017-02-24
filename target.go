@@ -23,8 +23,8 @@ type Target struct {
 
 func NewTarget(addr string, auth rpc.Auth, fh []byte, dirpath string) (*Target, error) {
 	m := rpc.Mapping{
-		Prog: NFS3_PROG,
-		Vers: NFS3_VERS,
+		Prog: Nfs3Prog,
+		Vers: Nfs3Vers,
 		Prot: rpc.IPPROTO_TCP,
 		Port: 0,
 	}
@@ -76,11 +76,11 @@ func (v *Target) FSInfo() (*FSInfo, error) {
 	buf, err := v.call(&FSInfoArgs{
 		Header: rpc.Header{
 			Rpcvers: 2,
-			Prog:    NFS3_PROG,
-			Vers:    NFS3_VERS,
-			Proc:    NFSPROC3_FSINFO,
+			Prog:    Nfs3Prog,
+			Vers:    Nfs3Vers,
+			Proc:    NFSProc3FSInfo,
 			Cred:    v.auth,
-			Verf:    rpc.AUTH_NULL,
+			Verf:    rpc.AuthNull,
 		},
 		FsRoot: v.fh,
 	})
@@ -137,11 +137,11 @@ func (v *Target) lookup(fh []byte, name string) (*Fattr, []byte, error) {
 	buf, err := v.call(&Lookup3Args{
 		Header: rpc.Header{
 			Rpcvers: 2,
-			Prog:    NFS3_PROG,
-			Vers:    NFS3_VERS,
-			Proc:    NFSPROC3_LOOKUP,
+			Prog:    Nfs3Prog,
+			Vers:    Nfs3Vers,
+			Proc:    NFSProc3Lookup,
 			Cred:    v.auth,
-			Verf:    rpc.AUTH_NULL,
+			Verf:    rpc.AuthNull,
 		},
 		What: Diropargs3{
 			FH:       fh,
@@ -201,11 +201,11 @@ func (v *Target) readDirPlus(fh []byte) ([]*EntryPlus, error) {
 	buf, err := v.call(&ReadDirPlus3Args{
 		Header: rpc.Header{
 			Rpcvers: 2,
-			Prog:    NFS3_PROG,
-			Vers:    NFS3_VERS,
-			Proc:    NFSPROC3_READDIRPLUS,
+			Prog:    Nfs3Prog,
+			Vers:    Nfs3Vers,
+			Proc:    NFSProc3ReadDirPlus,
 			Cred:    v.auth,
-			Verf:    rpc.AUTH_NULL,
+			Verf:    rpc.AuthNull,
 		},
 		FH:       fh,
 		DirCount: 512,
@@ -273,11 +273,11 @@ func (v *Target) Mkdir(path string, perm os.FileMode) ([]byte, error) {
 	buf, err := v.call(&MkdirArgs{
 		Header: rpc.Header{
 			Rpcvers: 2,
-			Prog:    NFS3_PROG,
-			Vers:    NFS3_VERS,
-			Proc:    NFSPROC3_MKDIR,
+			Prog:    Nfs3Prog,
+			Vers:    Nfs3Vers,
+			Proc:    NFSProc3Mkdir,
 			Cred:    v.auth,
-			Verf:    rpc.AUTH_NULL,
+			Verf:    rpc.AuthNull,
 		},
 		Where: Diropargs3{
 			FH:       fh,
@@ -334,11 +334,11 @@ func (v *Target) Create(path string, perm os.FileMode) ([]byte, error) {
 	buf, err := v.call(&Create3Args{
 		Header: rpc.Header{
 			Rpcvers: 2,
-			Prog:    NFS3_PROG,
-			Vers:    NFS3_VERS,
-			Proc:    NFSPROC3_CREATE,
+			Prog:    Nfs3Prog,
+			Vers:    Nfs3Vers,
+			Proc:    NFSProc3Create,
 			Cred:    v.auth,
-			Verf:    rpc.AUTH_NULL,
+			Verf:    rpc.AuthNull,
 		},
 		Where: Diropargs3{
 			FH:       fh,
@@ -390,11 +390,11 @@ func (v *Target) remove(fh []byte, deleteFile string) error {
 	_, err := v.call(&RemoveArgs{
 		Header: rpc.Header{
 			Rpcvers: 2,
-			Prog:    NFS3_PROG,
-			Vers:    NFS3_VERS,
-			Proc:    NFSPROC3_REMOVE,
+			Prog:    Nfs3Prog,
+			Vers:    Nfs3Vers,
+			Proc:    NFSProc3Remove,
 			Cred:    v.auth,
-			Verf:    rpc.AUTH_NULL,
+			Verf:    rpc.AuthNull,
 		},
 		Object: Diropargs3{
 			FH:       fh,
@@ -431,11 +431,11 @@ func (v *Target) rmDir(fh []byte, name string) error {
 	_, err := v.call(&RmDir3Args{
 		Header: rpc.Header{
 			Rpcvers: 2,
-			Prog:    NFS3_PROG,
-			Vers:    NFS3_VERS,
-			Proc:    NFSPROC3_RMDIR,
+			Prog:    Nfs3Prog,
+			Vers:    Nfs3Vers,
+			Proc:    NFSProc3RmDir,
 			Cred:    v.auth,
-			Verf:    rpc.AUTH_NULL,
+			Verf:    rpc.AuthNull,
 		},
 		Object: Diropargs3{
 			FH:       fh,
@@ -508,7 +508,7 @@ func (v *Target) removeAll(deleteDirfh []byte) error {
 
 		// If directory, recurse, then nuke it.  It should be empty when we get
 		// back.
-		if entry.Attr.Attr.Type == NF3DIR {
+		if entry.Attr.Attr.Type == NF3Dir {
 			if err = v.removeAll(entry.FH); err != nil {
 				return err
 			}

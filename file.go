@@ -47,11 +47,11 @@ func (f *File) Read(p []byte) (int, error) {
 	buf, err := f.call(&ReadArgs{
 		Header: rpc.Header{
 			Rpcvers: 2,
-			Prog:    NFS3_PROG,
-			Vers:    NFS3_VERS,
-			Proc:    NFSPROC3_READ,
+			Prog:    Nfs3Prog,
+			Vers:    Nfs3Vers,
+			Proc:    NFSProc3Read,
 			Cred:    f.auth,
-			Verf:    rpc.AUTH_NULL,
+			Verf:    rpc.AuthNull,
 		},
 		FH:     f.fh,
 		Offset: uint64(f.curr),
@@ -100,11 +100,11 @@ func (f *File) Write(p []byte) (int, error) {
 	_, err := f.call(&WriteArgs{
 		Header: rpc.Header{
 			Rpcvers: 2,
-			Prog:    NFS3_PROG,
-			Vers:    NFS3_VERS,
-			Proc:    NFSPROC3_WRITE,
+			Prog:    Nfs3Prog,
+			Vers:    Nfs3Vers,
+			Proc:    NFSProc3Write,
 			Cred:    f.auth,
-			Verf:    rpc.AUTH_NULL,
+			Verf:    rpc.AuthNull,
 		},
 		FH:       f.fh,
 		Offset:   f.curr,
@@ -137,11 +137,11 @@ func (f *File) Close() error {
 	_, err := f.call(&CommitArg{
 		Header: rpc.Header{
 			Rpcvers: 2,
-			Prog:    NFS3_PROG,
-			Vers:    NFS3_VERS,
-			Proc:    NFSPROC3_COMMIT,
+			Prog:    Nfs3Prog,
+			Vers:    Nfs3Vers,
+			Proc:    NFSProc3Commit,
 			Cred:    f.auth,
-			Verf:    rpc.AUTH_NULL,
+			Verf:    rpc.AuthNull,
 		},
 		FH: f.fh,
 	})

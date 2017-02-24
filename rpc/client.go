@@ -12,6 +12,21 @@ import (
 	"github.com/fdawg4l/nfs/xdr"
 )
 
+const (
+	MsgAccepted = iota
+	MsgDenied
+)
+
+const (
+	Success = iota
+	ProgUnavail
+	ProgMismatch
+)
+
+const (
+	RpcMismatch = iota
+)
+
 var xid uint32
 
 func init() {
@@ -38,6 +53,7 @@ func DialTCP(network string, ldr *net.TCPAddr, addr string) (*Client, error) {
 		Reader:      bufio.NewReader(conn),
 		WriteCloser: conn,
 	}
+
 	return &Client{t}, nil
 }
 
@@ -74,7 +90,7 @@ func (c *Client) Call(call interface{}) ([]byte, error) {
 
 	reply_stat, buf := xdr.Uint32(buf)
 	switch reply_stat {
-	case MSG_ACCEPTED:
+	case MsgAccepted:
 		_, buf = xdr.Uint32(buf)
 		opaque_len, buf := xdr.Uint32(buf)
 		_ = buf[0:int(opaque_len)]
@@ -82,21 +98,21 @@ func (c *Client) Call(call interface{}) ([]byte, error) {
 		accept_stat, buf := xdr.Uint32(buf)
 
 		switch accept_stat {
-		case SUCCESS:
+		case Success:
 			return buf, nil
-		case PROG_UNAVAIL:
+		case ProgUnavail:
 			return nil, fmt.Errorf("PROG_UNAVAIL")
-		case PROG_MISMATCH:
+		case ProgMismatch:
 			// TODO(dfc) decode mismatch_info
 			return nil, fmt.Errorf("rpc: PROG_MISMATCH")
 		default:
 			return nil, fmt.Errorf("rpc: %d", accept_stat)
 		}
 
-	case MSG_DENIED:
+	case MsgDenied:
 		rejected_stat, _ := xdr.Uint32(buf)
 		switch rejected_stat {
-		case RPC_MISMATCH:
+		case RpcMismatch:
 
 		default:
 			return nil, fmt.Errorf("rejected_stat was not valid: %d", rejected_stat)

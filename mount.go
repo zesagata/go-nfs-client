@@ -12,24 +12,24 @@ import (
 )
 
 const (
-	MOUNT_PROG = 100005
-	MOUNT_VERS = 3
+	MountProg = 100005
+	MountVers = 3
 
-	MOUNTPROC3_NULL   = 0
-	MOUNTPROC3_MNT    = 1
-	MOUNTPROC3_UMNT   = 3
-	MOUNTPROC3_EXPORT = 5
+	MountProc3Null   = 0
+	MountProc3MNT    = 1
+	MountProc3UMNT   = 3
+	MountProc3Export = 5
 
-	MNT3_OK             = 0     // no error
-	MNT3ERR_PERM        = 1     // Not owner
-	MNT3ERR_NOENT       = 2     // No such file or directory
-	MNT3ERR_IO          = 5     // I/O error
-	MNT3ERR_ACCES       = 13    // Permission denied
-	MNT3ERR_NOTDIR      = 20    // Not a directory
-	MNT3ERR_INVAL       = 22    // Invalid argument
-	MNT3ERR_NAMETOOLONG = 63    // Filename too long
-	MNT3ERR_NOTSUPP     = 10004 // Operation not supported
-	MNT3ERR_SERVERFAULT = 10006 // A failure on the server
+	MNT3Ok             = 0     // no error
+	MNT3ErrPerm        = 1     // Not owner
+	MNT3ErrNoEnt       = 2     // No such file or directory
+	MNT3ErrIO          = 5     // I/O error
+	MNT3ErrAcces       = 13    // Permission denied
+	MNT3ErrNotDir      = 20    // Not a directory
+	MNT3ErrInval       = 22    // Invalid argument
+	MNT3ErrNameTooLong = 63    // Filename too long
+	MNT3ErrNotSupp     = 10004 // Operation not supported
+	MNT3ErrServerFault = 10006 // A failure on the server
 )
 
 type Export struct {
@@ -57,14 +57,14 @@ func (m *Mount) Unmount() error {
 	_, err := m.Call(&umount{
 		rpc.Header{
 			Rpcvers: 2,
-			Prog:    MOUNT_PROG,
-			Vers:    MOUNT_VERS,
-			Proc:    MOUNTPROC3_UMNT,
+			Prog:    MountProg,
+			Vers:    MountVers,
+			Proc:    MountProc3UMNT,
 			// Weirdly, the spec calls for AUTH_UNIX or better, but AUTH_NULL
 			// works here on a linux NFS kernel server.  Follow the spec
 			// anyway.
 			Cred: m.auth,
-			Verf: rpc.AUTH_NULL,
+			Verf: rpc.AuthNull,
 		},
 		m.dirPath,
 	})
@@ -84,11 +84,11 @@ func (m *Mount) Mount(dirpath string, auth rpc.Auth) (*Target, error) {
 	buf, err := m.Call(&mount{
 		rpc.Header{
 			Rpcvers: 2,
-			Prog:    MOUNT_PROG,
-			Vers:    MOUNT_VERS,
-			Proc:    MOUNTPROC3_MNT,
+			Prog:    MountProg,
+			Vers:    MountVers,
+			Proc:    MountProc3MNT,
 			Cred:    auth,
-			Verf:    rpc.AUTH_NULL,
+			Verf:    rpc.AuthNull,
 		},
 		dirpath,
 	})
@@ -98,7 +98,7 @@ func (m *Mount) Mount(dirpath string, auth rpc.Auth) (*Target, error) {
 
 	mountstat3, buf := xdr.Uint32(buf)
 	switch mountstat3 {
-	case MNT3_OK:
+	case MNT3Ok:
 		fh, buf := xdr.Opaque(buf)
 		_, buf = xdr.Uint32List(buf)
 
@@ -112,17 +112,17 @@ func (m *Mount) Mount(dirpath string, auth rpc.Auth) (*Target, error) {
 
 		return vol, nil
 
-	case MNT3ERR_PERM:
+	case MNT3ErrPerm:
 		return nil, errors.New("MNT3ERR_PERM")
-	case MNT3ERR_NOENT:
+	case MNT3ErrNoEnt:
 		return nil, errors.New("MNT3ERR_NOENT")
-	case MNT3ERR_IO:
+	case MNT3ErrIO:
 		return nil, errors.New("MNT3ERR_IO")
-	case MNT3ERR_ACCES:
+	case MNT3ErrAcces:
 		return nil, errors.New("MNT3ERR_ACCES")
-	case MNT3ERR_NOTDIR:
+	case MNT3ErrNotDir:
 		return nil, errors.New("MNT3ERR_NOTDIR")
-	case MNT3ERR_NAMETOOLONG:
+	case MNT3ErrNameTooLong:
 		return nil, errors.New("MNT3ERR_NAMETOOLONG")
 	}
 	return nil, fmt.Errorf("unknown mount stat: %d", mountstat3)
@@ -131,8 +131,8 @@ func (m *Mount) Mount(dirpath string, auth rpc.Auth) (*Target, error) {
 func DialMount(addr string) (*Mount, error) {
 	// get MOUNT port
 	m := rpc.Mapping{
-		Prog: MOUNT_PROG,
-		Vers: MOUNT_VERS,
+		Prog: MountProg,
+		Vers: MountVers,
 		Prot: rpc.IPPROTO_TCP,
 		Port: 0,
 	}

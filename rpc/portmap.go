@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/fdawg4l/nfs/xdr"
@@ -45,8 +44,8 @@ func (p *Portmapper) Getport(mapping Mapping) (int, error) {
 			Prog:    PMAP_PROG,
 			Vers:    PMAP_VERS,
 			Proc:    PMAPPROC_GETPORT,
-			Cred:    AUTH_NULL,
-			Verf:    AUTH_NULL,
+			Cred:    AuthNull,
+			Verf:    AuthNull,
 		},
 		mapping,
 	}
@@ -56,39 +55,6 @@ func (p *Portmapper) Getport(mapping Mapping) (int, error) {
 	}
 	port, _ := xdr.Uint32(buf)
 	return int(port), nil
-}
-
-func (p *Portmapper) Dump() ([]Mapping, error) {
-	type dump struct {
-		Header
-	}
-	msg := &dump{
-		Header{
-			Rpcvers: 2,
-			Prog:    PMAP_PROG,
-			Vers:    PMAP_VERS,
-			Proc:    PMAPPROC_DUMP,
-			Cred:    AUTH_NULL,
-			Verf:    AUTH_NULL,
-		},
-	}
-	buf, err := p.Call(msg)
-	if err != nil {
-		return nil, err
-	}
-	var mm []Mapping
-	for r := bytes.NewBuffer(buf); r.Len() > 0; {
-		type index struct {
-			Index uint32
-			M     Mapping
-		}
-		var i index
-		if err := xdr.Read(r, &i); err != nil {
-			return nil, err
-		}
-		mm = append(mm, i.M)
-	}
-	return mm, nil
 }
 
 func DialPortmapper(net, host string) (*Portmapper, error) {

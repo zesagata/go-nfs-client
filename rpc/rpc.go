@@ -15,11 +15,6 @@ type transport interface {
 	io.Closer
 }
 
-type mismatch_info struct {
-	low  uint32
-	high uint32
-}
-
 type Header struct {
 	Rpcvers uint32
 	Prog    uint32
@@ -40,12 +35,9 @@ type Auth struct {
 	Body   []byte
 }
 
-var AUTH_NULL = Auth{
-	0,
-	[]byte{},
-}
+var AuthNull Auth
 
-type AUTH_UNIX struct {
+type AuthUnix struct {
 	Stamp       uint32
 	Machinename string
 	Uid         uint32
@@ -55,7 +47,7 @@ type AUTH_UNIX struct {
 }
 
 // Auth converts a into an Auth opaque struct
-func (a AUTH_UNIX) Auth() Auth {
+func (a AuthUnix) Auth() Auth {
 	w := new(bytes.Buffer)
 	xdr.Write(w, a)
 	return Auth{
@@ -64,8 +56,8 @@ func (a AUTH_UNIX) Auth() Auth {
 	}
 }
 
-func NewAuthUnix(machinename string, uid, gid uint32) *AUTH_UNIX {
-	return &AUTH_UNIX{
+func NewAuthUnix(machinename string, uid, gid uint32) *AuthUnix {
+	return &AuthUnix{
 		Stamp:       rand.New(rand.NewSource(time.Now().UnixNano())).Uint32(),
 		Machinename: machinename,
 		Uid:         uid,

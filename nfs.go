@@ -13,32 +13,29 @@ import (
 	"github.com/fdawg4l/nfs/util"
 )
 
-// NFS version 3
-// RFC 1813
-
 const (
-	NFS3_PROG = 100003
-	NFS3_VERS = 3
+	Nfs3Prog = 100003
+	Nfs3Vers = 3
 
 	// program methods
-	NFSPROC3_LOOKUP      = 3
-	NFSPROC3_READ        = 6
-	NFSPROC3_WRITE       = 7
-	NFSPROC3_CREATE      = 8
-	NFSPROC3_MKDIR       = 9
-	NFSPROC3_REMOVE      = 12
-	NFSPROC3_RMDIR       = 13
-	NFSPROC3_READDIRPLUS = 17
-	NFSPROC3_FSINFO      = 19
-	NFSPROC3_COMMIT      = 21
+	NFSProc3Lookup      = 3
+	NFSProc3Read        = 6
+	NFSProc3Write       = 7
+	NFSProc3Create      = 8
+	NFSProc3Mkdir       = 9
+	NFSProc3Remove      = 12
+	NFSProc3RmDir       = 13
+	NFSProc3ReadDirPlus = 17
+	NFSProc3FSInfo      = 19
+	NFSProc3Commit      = 21
 
 	// file types
-	NF3REG  = 1
-	NF3DIR  = 2
-	NF3BLK  = 3
-	NF3CHR  = 4
-	NF3LNK  = 5
-	NF3SOCK = 6
+	NF3Reg  = 1
+	NF3Dir  = 2
+	NF3Blk  = 3
+	NF3Chr  = 4
+	NF3Lnk  = 5
+	NF3Sock = 6
 	NF3FIFO = 7
 )
 
