@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"math/rand"
 	"net"
 	"sync/atomic"
@@ -35,7 +36,7 @@ func init() {
 }
 
 type Client struct {
-	transport
+	*tcpTransport
 }
 
 func DialTCP(network string, ldr *net.TCPAddr, addr string) (*Client, error) {
@@ -50,14 +51,14 @@ func DialTCP(network string, ldr *net.TCPAddr, addr string) (*Client, error) {
 	}
 
 	t := &tcpTransport{
-		Reader:      bufio.NewReader(conn),
-		WriteCloser: conn,
+		r:  bufio.NewReader(conn),
+		wc: conn,
 	}
 
 	return &Client{t}, nil
 }
 
-func (c *Client) Call(call interface{}) ([]byte, error) {
+func (c *Client) Call(call interface{}) (io.ReadSeeker, error) {
 	msg := &message{
 		Xid:     atomic.AddUint32(&xid, 1),
 		Msgtype: 0,
@@ -69,57 +70,81 @@ func (c *Client) Call(call interface{}) ([]byte, error) {
 		return nil, err
 	}
 
-	if err := c.send(w.Bytes()); err != nil {
+	if _, err := c.Write(w.Bytes()); err != nil {
 		return nil, err
 	}
 
-	buf, err := c.recv()
+	res, err := c.recv()
 	if err != nil {
 		return nil, err
 	}
 
-	xid, buf := xdr.Uint32(buf)
+	xid, err := xdr.ReadUint32(res)
+	if err != nil {
+		return nil, err
+	}
+
 	if xid != msg.Xid {
 		return nil, fmt.Errorf("xid did not match, expected: %x, received: %x", msg.Xid, xid)
 	}
 
-	mtype, buf := xdr.Uint32(buf)
+	mtype, err := xdr.ReadUint32(res)
+	if err != nil {
+		return nil, err
+	}
+
 	if mtype != 1 {
 		return nil, fmt.Errorf("message as not a reply: %d", mtype)
 	}
 
-	reply_stat, buf := xdr.Uint32(buf)
-	switch reply_stat {
-	case MsgAccepted:
-		_, buf = xdr.Uint32(buf)
-		opaque_len, buf := xdr.Uint32(buf)
-		_ = buf[0:int(opaque_len)]
-		buf = buf[opaque_len:]
-		accept_stat, buf := xdr.Uint32(buf)
+	status, err := xdr.ReadUint32(res)
+	if err != nil {
+		return nil, err
+	}
 
-		switch accept_stat {
+	switch status {
+	case MsgAccepted:
+
+		// padding
+		_, err = xdr.ReadUint32(res)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		opaque_len, err := xdr.ReadUint32(res)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		_, err = res.Seek(int64(opaque_len), io.SeekCurrent)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		acceptStatus, _ := xdr.ReadUint32(res)
+
+		switch acceptStatus {
 		case Success:
-			return buf, nil
+			return res, nil
 		case ProgUnavail:
 			return nil, fmt.Errorf("PROG_UNAVAIL")
 		case ProgMismatch:
-			// TODO(dfc) decode mismatch_info
 			return nil, fmt.Errorf("rpc: PROG_MISMATCH")
 		default:
-			return nil, fmt.Errorf("rpc: %d", accept_stat)
+			return nil, fmt.Errorf("rpc: unknown status %d", acceptStatus)
 		}
 
 	case MsgDenied:
-		rejected_stat, _ := xdr.Uint32(buf)
-		switch rejected_stat {
+		rejectStatus, _ := xdr.ReadUint32(res)
+		switch rejectStatus {
 		case RpcMismatch:
 
 		default:
-			return nil, fmt.Errorf("rejected_stat was not valid: %d", rejected_stat)
+			return nil, fmt.Errorf("rejectedStatus was not valid: %d", rejectStatus)
 		}
 
 	default:
-		return nil, fmt.Errorf("reply_stat was not valid: %d", reply_stat)
+		return nil, fmt.Errorf("rejectedStatus was not valid: %d", status)
 	}
 
 	panic("unreachable")

@@ -1,7 +1,6 @@
 package nfs
 
 import (
-	"bytes"
 	"io"
 	"os"
 
@@ -44,7 +43,7 @@ func (f *File) Read(p []byte) (int, error) {
 	readSize := uint32(min(uint64(f.fsinfo.RTPref), uint64(len(p))))
 	util.Debugf("read(%x) len=%d offset=%d", f.fh, readSize, f.curr)
 
-	buf, err := f.call(&ReadArgs{
+	r, err := f.call(&ReadArgs{
 		Header: rpc.Header{
 			Rpcvers: 2,
 			Prog:    Nfs3Prog,
@@ -63,7 +62,6 @@ func (f *File) Read(p []byte) (int, error) {
 		return 0, err
 	}
 
-	r := bytes.NewBuffer(buf)
 	readres := &ReadRes{}
 	if err = xdr.Read(r, readres); err != nil {
 		return 0, err

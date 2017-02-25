@@ -1,8 +1,5 @@
 package nfs
 
-// MOUNT
-// RFC 1813 Section 5.0
-
 import (
 	"errors"
 	"fmt"
@@ -31,15 +28,6 @@ const (
 	MNT3ErrNotSupp     = 10004 // Operation not supported
 	MNT3ErrServerFault = 10006 // A failure on the server
 )
-
-type Export struct {
-	Dir    string
-	Groups []Group
-}
-
-type Group struct {
-	Name string
-}
 
 type Mount struct {
 	*rpc.Client
@@ -81,7 +69,7 @@ func (m *Mount) Mount(dirpath string, auth rpc.Auth) (*Target, error) {
 		Dirpath string
 	}
 
-	buf, err := m.Call(&mount{
+	res, err := m.Call(&mount{
 		rpc.Header{
 			Rpcvers: 2,
 			Prog:    MountProg,
@@ -96,11 +84,19 @@ func (m *Mount) Mount(dirpath string, auth rpc.Auth) (*Target, error) {
 		return nil, err
 	}
 
-	mountstat3, buf := xdr.Uint32(buf)
+	mountstat3, err := xdr.ReadUint32(res)
+	if err != nil {
+		return nil, err
+	}
+
 	switch mountstat3 {
 	case MNT3Ok:
-		fh, buf := xdr.Opaque(buf)
-		_, buf = xdr.Uint32List(buf)
+		fh, err := xdr.ReadOpaque(res)
+		if err != nil {
+			return nil, err
+		}
+
+		_, _ = xdr.ReadUint32List(res)
 
 		m.dirPath = dirpath
 		m.auth = auth
@@ -133,7 +129,7 @@ func DialMount(addr string) (*Mount, error) {
 	m := rpc.Mapping{
 		Prog: MountProg,
 		Vers: MountVers,
-		Prot: rpc.IPPROTO_TCP,
+		Prot: rpc.IPProtoTCP,
 		Port: 0,
 	}
 

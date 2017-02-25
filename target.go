@@ -1,7 +1,7 @@
 package nfs
 
 import (
-	"bytes"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -25,7 +25,7 @@ func NewTarget(addr string, auth rpc.Auth, fh []byte, dirpath string) (*Target, 
 	m := rpc.Mapping{
 		Prog: Nfs3Prog,
 		Vers: Nfs3Vers,
-		Prot: rpc.IPPROTO_TCP,
+		Prot: rpc.IPProtoTCP,
 		Port: 0,
 	}
 
@@ -53,18 +53,22 @@ func NewTarget(addr string, auth rpc.Auth, fh []byte, dirpath string) (*Target, 
 }
 
 // wraps the Call function to check status and decode errors
-func (v *Target) call(c interface{}) ([]byte, error) {
-	buf, err := v.Call(c)
+func (v *Target) call(c interface{}) (io.ReadSeeker, error) {
+	res, err := v.Call(c)
 	if err != nil {
 		return nil, err
 	}
 
-	res, buf := xdr.Uint32(buf)
-	if err = NFS3Error(res); err != nil {
+	status, err := xdr.ReadUint32(res)
+	if err != nil {
 		return nil, err
 	}
 
-	return buf, nil
+	if err = NFS3Error(status); err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
 
 func (v *Target) FSInfo() (*FSInfo, error) {
@@ -73,7 +77,7 @@ func (v *Target) FSInfo() (*FSInfo, error) {
 		FsRoot []byte
 	}
 
-	buf, err := v.call(&FSInfoArgs{
+	res, err := v.call(&FSInfoArgs{
 		Header: rpc.Header{
 			Rpcvers: 2,
 			Prog:    Nfs3Prog,
@@ -91,8 +95,7 @@ func (v *Target) FSInfo() (*FSInfo, error) {
 	}
 
 	fsinfo := new(FSInfo)
-	r := bytes.NewBuffer(buf)
-	if err = xdr.Read(r, fsinfo); err != nil {
+	if err = xdr.Read(res, fsinfo); err != nil {
 		return nil, err
 	}
 
@@ -134,7 +137,7 @@ func (v *Target) lookup(fh []byte, name string) (*Fattr, []byte, error) {
 		What Diropargs3
 	}
 
-	buf, err := v.call(&Lookup3Args{
+	res, err := v.call(&Lookup3Args{
 		Header: rpc.Header{
 			Rpcvers: 2,
 			Prog:    Nfs3Prog,
@@ -154,15 +157,22 @@ func (v *Target) lookup(fh []byte, name string) (*Fattr, []byte, error) {
 		return nil, nil, err
 	}
 
-	fh, buf = xdr.Opaque(buf)
+	fh, err = xdr.ReadOpaque(res)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	util.Debugf("lookup(%s): FH 0x%x", name, fh)
 
 	var fattrs *Fattr
-	attrFollows, buf := xdr.Uint32(buf)
+	attrFollows, err := xdr.ReadUint32(res)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	if attrFollows != 0 {
-		r := bytes.NewBuffer(buf)
-		fattrs = &Fattr{}
-		if err = xdr.Read(r, fattrs); err != nil {
+		fattrs = new(Fattr)
+		if err = xdr.Read(res, fattrs); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -198,7 +208,7 @@ func (v *Target) readDirPlus(fh []byte) ([]*EntryPlus, error) {
 		Follows    uint32
 	}
 
-	buf, err := v.call(&ReadDirPlus3Args{
+	res, err := v.call(&ReadDirPlus3Args{
 		Header: rpc.Header{
 			Rpcvers: 2,
 			Prog:    Nfs3Prog,
@@ -222,9 +232,8 @@ func (v *Target) readDirPlus(fh []byte) ([]*EntryPlus, error) {
 	// an encoding used to flatten a linked list into an array where the
 	// Follows field is set when the next idx has data. See
 	// https://tools.ietf.org/html/rfc4506.html#section-4.19 for details.
-	r := bytes.NewBuffer(buf)
-	dirlistOK := &DirListOK{}
-	if err = xdr.Read(r, dirlistOK); err != nil {
+	dirlistOK := new(DirListOK)
+	if err = xdr.Read(res, dirlistOK); err != nil {
 		return nil, err
 	}
 
@@ -236,7 +245,7 @@ func (v *Target) readDirPlus(fh []byte) ([]*EntryPlus, error) {
 	for {
 		var entry EntryPlus
 
-		if err = xdr.Read(r, &entry); err != nil {
+		if err = xdr.Read(res, &entry); err != nil {
 			return nil, err
 		}
 
@@ -249,7 +258,7 @@ func (v *Target) readDirPlus(fh []byte) ([]*EntryPlus, error) {
 
 	// The last byte is EOF
 	var eof uint32
-	if err = xdr.Read(r, &eof); err != nil {
+	if err = xdr.Read(res, &eof); err != nil {
 		util.Debugf("ReadDirPlus(0x%x): expected EOF", fh)
 	}
 
@@ -270,7 +279,7 @@ func (v *Target) Mkdir(path string, perm os.FileMode) ([]byte, error) {
 		Attrs Sattr3
 	}
 
-	buf, err := v.call(&MkdirArgs{
+	res, err := v.call(&MkdirArgs{
 		Header: rpc.Header{
 			Rpcvers: 2,
 			Prog:    Nfs3Prog,
@@ -296,9 +305,16 @@ func (v *Target) Mkdir(path string, perm os.FileMode) ([]byte, error) {
 		return nil, err
 	}
 
-	follows, buf := xdr.Uint32(buf)
+	follows, err := xdr.ReadUint32(res)
+	if err != nil {
+		return nil, err
+	}
+
 	if follows != 0 {
-		fh, buf = xdr.Opaque(buf)
+		fh, err = xdr.ReadOpaque(res)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	util.Debugf("mkdir(%s): created successfully (0x%x)", path, fh)
@@ -331,7 +347,7 @@ func (v *Target) Create(path string, perm os.FileMode) ([]byte, error) {
 		FH      []byte
 	}
 
-	buf, err := v.call(&Create3Args{
+	res, err := v.call(&Create3Args{
 		Header: rpc.Header{
 			Rpcvers: 2,
 			Prog:    Nfs3Prog,
@@ -359,14 +375,13 @@ func (v *Target) Create(path string, perm os.FileMode) ([]byte, error) {
 		return nil, err
 	}
 
-	res := &Create3Res{}
-	r := bytes.NewBuffer(buf)
-	if err = xdr.Read(r, res); err != nil {
+	status := new(Create3Res)
+	if err = xdr.Read(res, status); err != nil {
 		return nil, err
 	}
 
 	util.Debugf("create(%s): created successfully", path)
-	return res.FH, nil
+	return status.FH, nil
 }
 
 // Remove a file

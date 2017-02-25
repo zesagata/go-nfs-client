@@ -2,18 +2,11 @@ package rpc
 
 import (
 	"bytes"
-	"io"
 	"math/rand"
 	"time"
 
 	"github.com/fdawg4l/nfs/xdr"
 )
-
-type transport interface {
-	send([]byte) error
-	recv() ([]byte, error)
-	io.Closer
-}
 
 type Header struct {
 	Rpcvers uint32

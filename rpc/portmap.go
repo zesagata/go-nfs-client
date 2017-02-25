@@ -10,15 +10,14 @@ import (
 // RFC 1057 Section A.1
 
 const (
-	PMAP_PORT = 111
-	PMAP_PROG = 100000
-	PMAP_VERS = 2
+	PmapPort = 111
+	PmapProg = 100000
+	PmapVers = 2
 
-	PMAPPROC_GETPORT = 3
-	PMAPPROC_DUMP    = 4
+	PmapProcGetPort = 3
 
-	IPPROTO_TCP = 6
-	IPPROTO_UDP = 17
+	IPProtoTCP = 6
+	IPProtoUDP = 17
 )
 
 type Mapping struct {
@@ -41,24 +40,27 @@ func (p *Portmapper) Getport(mapping Mapping) (int, error) {
 	msg := &getport{
 		Header{
 			Rpcvers: 2,
-			Prog:    PMAP_PROG,
-			Vers:    PMAP_VERS,
-			Proc:    PMAPPROC_GETPORT,
+			Prog:    PmapProg,
+			Vers:    PmapVers,
+			Proc:    PmapProcGetPort,
 			Cred:    AuthNull,
 			Verf:    AuthNull,
 		},
 		mapping,
 	}
-	buf, err := p.Call(msg)
+	res, err := p.Call(msg)
 	if err != nil {
 		return 0, err
 	}
-	port, _ := xdr.Uint32(buf)
+	port, err := xdr.ReadUint32(res)
+	if err != nil {
+		return int(port), err
+	}
 	return int(port), nil
 }
 
 func DialPortmapper(net, host string) (*Portmapper, error) {
-	client, err := DialTCP(net, nil, fmt.Sprintf("%s:%d", host, PMAP_PORT))
+	client, err := DialTCP(net, nil, fmt.Sprintf("%s:%d", host, PmapPort))
 	if err != nil {
 		return nil, err
 	}
