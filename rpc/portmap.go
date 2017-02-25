@@ -20,6 +20,15 @@ const (
 	IPProtoUDP = 17
 )
 
+type Header struct {
+	Rpcvers uint32
+	Prog    uint32
+	Vers    uint32
+	Proc    uint32
+	Cred    Auth
+	Verf    Auth
+}
+
 type Mapping struct {
 	Prog uint32
 	Vers uint32

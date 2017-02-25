@@ -58,11 +58,16 @@ func DialTCP(network string, ldr *net.TCPAddr, addr string) (*Client, error) {
 	return &Client{t}, nil
 }
 
+type message struct {
+	Xid     uint32
+	Msgtype uint32
+	Body    interface{}
+}
+
 func (c *Client) Call(call interface{}) (io.ReadSeeker, error) {
 	msg := &message{
-		Xid:     atomic.AddUint32(&xid, 1),
-		Msgtype: 0,
-		Body:    call,
+		Xid:  atomic.AddUint32(&xid, 1),
+		Body: call,
 	}
 
 	w := new(bytes.Buffer)

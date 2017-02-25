@@ -8,21 +8,6 @@ import (
 	"github.com/fdawg4l/nfs/xdr"
 )
 
-type Header struct {
-	Rpcvers uint32
-	Prog    uint32
-	Vers    uint32
-	Proc    uint32
-	Cred    Auth
-	Verf    Auth
-}
-
-type message struct {
-	Xid     uint32
-	Msgtype uint32
-	Body    interface{}
-}
-
 type Auth struct {
 	Flavor uint32
 	Body   []byte
@@ -39,16 +24,6 @@ type AuthUnix struct {
 	Gids        uint32
 }
 
-// Auth converts a into an Auth opaque struct
-func (a AuthUnix) Auth() Auth {
-	w := new(bytes.Buffer)
-	xdr.Write(w, a)
-	return Auth{
-		1,
-		w.Bytes(),
-	}
-}
-
 func NewAuthUnix(machinename string, uid, gid uint32) *AuthUnix {
 	return &AuthUnix{
 		Stamp:       rand.New(rand.NewSource(time.Now().UnixNano())).Uint32(),
@@ -56,5 +31,15 @@ func NewAuthUnix(machinename string, uid, gid uint32) *AuthUnix {
 		Uid:         uid,
 		Gid:         gid,
 		GidLen:      1,
+	}
+}
+
+// Auth converts a into an Auth opaque struct
+func (a AuthUnix) Auth() Auth {
+	w := new(bytes.Buffer)
+	xdr.Write(w, a)
+	return Auth{
+		1,
+		w.Bytes(),
 	}
 }
