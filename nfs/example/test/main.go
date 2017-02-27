@@ -10,9 +10,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/fdawg4l/nfs"
-	"github.com/fdawg4l/nfs/rpc"
-	"github.com/fdawg4l/nfs/util"
+	"github.com/fdawg4l/go-nfs-client/nfs"
+	"github.com/fdawg4l/go-nfs-client/nfs/rpc"
+	"github.com/fdawg4l/go-nfs-client/nfs/util"
 )
 
 func main() {

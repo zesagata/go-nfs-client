@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/fdawg4l/nfs/xdr"
+	"github.com/fdawg4l/go-nfs-client/nfs/xdr"
 )
 
 const (

@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/fdawg4l/nfs/util"
+	"github.com/fdawg4l/go-nfs-client/nfs/util"
 )
 
 func TestRead(t *testing.T) {

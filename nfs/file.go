@@ -4,9 +4,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/fdawg4l/nfs/rpc"
-	"github.com/fdawg4l/nfs/util"
-	"github.com/fdawg4l/nfs/xdr"
+	"github.com/fdawg4l/go-nfs-client/nfs/rpc"
+	"github.com/fdawg4l/go-nfs-client/nfs/util"
+	"github.com/fdawg4l/go-nfs-client/nfs/xdr"
 )
 
 type File struct {

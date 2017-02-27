@@ -9,8 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/fdawg4l/nfs/rpc"
-	"github.com/fdawg4l/nfs/util"
+	"github.com/fdawg4l/go-nfs-client/nfs/rpc"
+	"github.com/fdawg4l/go-nfs-client/nfs/util"
 )
 
 const (
