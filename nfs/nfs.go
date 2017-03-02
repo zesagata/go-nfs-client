@@ -103,7 +103,7 @@ func (f *Fattr) IsDir() bool {
 }
 
 func (f *Fattr) Sys() interface{} {
-	return f.SpecData
+	return nil
 }
 
 type EntryPlus struct {
@@ -117,6 +117,50 @@ type EntryPlus struct {
 	FHSet        uint32
 	FH           []byte
 	ValueFollows uint32
+}
+
+func (e *EntryPlus) Name() string {
+	return e.FileName
+}
+
+func (e *EntryPlus) Size() int64 {
+	if e.Attr.Follows == 0 {
+		return 0
+	}
+
+	return e.Attr.Attr.Size()
+}
+
+func (e *EntryPlus) Mode() os.FileMode {
+	if e.Attr.Follows == 0 {
+		return 0
+	}
+
+	return e.Attr.Attr.Mode()
+}
+
+func (e *EntryPlus) ModTime() time.Time {
+	if e.Attr.Follows == 0 {
+		return time.Time{}
+	}
+
+	return e.Attr.Attr.ModTime()
+}
+
+func (e *EntryPlus) IsDir() bool {
+	if e.Attr.Follows == 0 {
+		return false
+	}
+
+	return e.Attr.Attr.IsDir()
+}
+
+func (e *EntryPlus) Sys() interface{} {
+	if e.Attr.Follows == 0 {
+		return 0
+	}
+
+	return e.FileId
 }
 
 type FSInfo struct {
