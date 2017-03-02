@@ -70,16 +70,40 @@ type NFS3Time struct {
 
 type Fattr struct {
 	Type                uint32
-	Mode                uint32
+	FileMode            uint32
 	Nlink               uint32
 	UID                 uint32
 	GID                 uint32
-	Size                uint64
+	Filesize            uint64
 	Used                uint64
 	SpecData            [2]uint32
 	FSID                uint64
 	Fileid              uint64
 	Atime, Mtime, Ctime NFS3Time
+}
+
+func (f *Fattr) Name() string {
+	return ""
+}
+
+func (f *Fattr) Size() int64 {
+	return int64(f.Filesize)
+}
+
+func (f *Fattr) Mode() os.FileMode {
+	return os.FileMode(f.FileMode)
+}
+
+func (f *Fattr) ModTime() time.Time {
+	return time.Unix(int64(f.Mtime.Seconds), int64(f.Mtime.Nseconds))
+}
+
+func (f *Fattr) IsDir() bool {
+	return f.Type == NF3Dir
+}
+
+func (f *Fattr) Sys() interface{} {
+	return f.SpecData
 }
 
 type EntryPlus struct {
