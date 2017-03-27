@@ -87,7 +87,7 @@ func main() {
 		log.Fatalf("expected a NOTADIR error")
 	} else {
 		nfserr := err.(*nfs.Error)
-		if nfserr.ErrorNum != nfs.NFS3ERR_NOTDIR {
+		if nfserr.ErrorNum != nfs.NFS3ErrNotDir {
 			log.Fatalf("Wrong error")
 		}
 	}
