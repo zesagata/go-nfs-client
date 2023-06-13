@@ -243,6 +243,7 @@ func dialService(addr string, port int) (*rpc.Client, error) {
 	var (
 		ldr    *net.TCPAddr
 		client *rpc.Client
+		err    error
 	)
 
 	r1 := rand.New(rand.NewSource(time.Now().UnixNano()))
