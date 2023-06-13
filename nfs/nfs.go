@@ -7,12 +7,11 @@ import (
 	"math/rand"
 	"net"
 	"os"
-	"os/user"
 	"syscall"
 	"time"
 
-	"github.com/vmware/go-nfs-client/nfs/rpc"
-	"github.com/vmware/go-nfs-client/nfs/util"
+	"github.com/zesagata/go-nfs-client/nfs/rpc"
+	"github.com/zesagata/go-nfs-client/nfs/util"
 )
 
 const (

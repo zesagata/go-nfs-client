@@ -1,6 +1,5 @@
 // Copyright © 2017 VMware, Inc. All Rights Reserved.
 // SPDX-License-Identifier: BSD-2-Clause
-//
 package main
 
 import (
@@ -13,9 +12,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/vmware/go-nfs-client/nfs"
-	"github.com/vmware/go-nfs-client/nfs/rpc"
-	"github.com/vmware/go-nfs-client/nfs/util"
+	"github.com/zesagata/go-nfs-client/nfs"
+	"github.com/zesagata/go-nfs-client/nfs/rpc"
+	"github.com/zesagata/go-nfs-client/nfs/util"
 )
 
 func main() {
